@@ -1,0 +1,178 @@
+"use client"
+
+import { useEffect } from "react"
+import { useAppDispatch, useAppSelector } from "@/hooks/use-redux"
+import { fetchClassesRequest } from "@/store/slices/classes-slice"
+import { fetchTutorStatsRequest } from "@/store/slices/stats-slice"
+import { StatsCard } from "@/components/dashboard/stats-card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { BookOpen, Users, Wallet, Star, Calendar, Clock, Award } from "lucide-react"
+import Link from "next/link"
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
+}
+
+export default function TeacherDashboard() {
+  const dispatch = useAppDispatch()
+  const { user } = useAppSelector((state) => state.auth)
+  const { classRequests, sessions } = useAppSelector((state) => state.classes)
+  const { tutorStats, isLoading: statsLoading } = useAppSelector((state) => state.stats)
+
+  useEffect(() => {
+    dispatch(fetchClassesRequest())
+    if (user?.id) {
+      dispatch(fetchTutorStatsRequest(user.id))
+    }
+  }, [dispatch, user?.id])
+
+  // Use tutorStats for teachers too (same structure)
+  // Teachers typically earn more
+  const baseStats = tutorStats || {
+    activeClasses: 0,
+    totalStudents: 0,
+    monthlyEarnings: 0,
+    averageRating: 0,
+    upcomingSessions: 0,
+    completedSessions: 0,
+  }
+
+  const stats = {
+    ...baseStats,
+    monthlyEarnings: baseStats.monthlyEarnings > 0 ? baseStats.monthlyEarnings * 2 : 25000000, // Teachers earn more
+    averageRating: 5.0, // Teachers typically have higher ratings
+  }
+
+  const upcomingSessions = sessions.filter((s) => s.status === "scheduled").slice(0, 3)
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Xin chào, {user?.fullName}!</h1>
+          <p className="text-muted-foreground">Tổng quan hoạt động giảng dạy của bạn</p>
+        </div>
+        <Badge className="bg-primary/10 text-primary gap-1">
+          <Award className="h-4 w-4" />
+          Giáo viên chuyên nghiệp
+        </Badge>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Lớp đang dạy"
+          value={statsLoading ? "..." : stats.activeClasses}
+          icon={<BookOpen className="h-6 w-6" />}
+        />
+        <StatsCard
+          title="Học sinh"
+          value={statsLoading ? "..." : stats.totalStudents}
+          icon={<Users className="h-6 w-6" />}
+        />
+        <StatsCard
+          title="Thu nhập tháng"
+          value={statsLoading ? "..." : formatCurrency(stats.monthlyEarnings)}
+          icon={<Wallet className="h-6 w-6" />}
+          trend={{ value: 20, isPositive: true }}
+        />
+        <StatsCard
+          title="Đánh giá"
+          value={statsLoading ? "..." : `${stats.averageRating}/5`}
+          description="Đánh giá xuất sắc"
+          icon={<Star className="h-6 w-6" />}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Upcoming Sessions */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Lịch dạy hôm nay</CardTitle>
+            <Link href="/dashboard/teacher/schedule">
+              <Button variant="outline" size="sm">
+                Xem tất cả
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {upcomingSessions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Không có lịch dạy hôm nay</p>
+              </div>
+            ) : (
+              upcomingSessions.map((session) => {
+                const classInfo = classRequests.find((c) => c.id === session.classId)
+                return (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <BookOpen className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{classInfo?.subjectName || "Lớp học"}</p>
+                        <p className="text-sm text-muted-foreground">{classInfo?.studentName}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {new Date(session.scheduledAt).toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{session.duration} phút</p>
+                    </div>
+                    <Button size="sm">Vào lớp</Button>
+                  </div>
+                )
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Stats */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Thống kê tháng</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Buổi đã dạy</span>
+                <span className="font-medium">{stats.completedSessions} buổi</span>
+              </div>
+              <Progress value={85} />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tỷ lệ hoàn thành</span>
+                <span className="font-medium text-success">98%</span>
+              </div>
+              <Progress value={98} className="bg-success/20" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Học sinh đạt target</span>
+                <span className="font-medium">90%</span>
+              </div>
+              <Progress value={90} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
