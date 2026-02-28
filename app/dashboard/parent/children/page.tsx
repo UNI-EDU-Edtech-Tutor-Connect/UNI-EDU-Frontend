@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import {
   Users,
@@ -29,14 +31,37 @@ import {
   MessageCircle,
   Phone,
   Plus,
+  Video,
+  MapPin,
+  MessageSquare
 } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ParentChildrenPage() {
   const dispatch = useAppDispatch()
   const { user } = useAppSelector((state) => state.auth)
   const { parentChildren, isLoading } = useAppSelector((state) => state.users)
-  const [selectedChildId, setSelectedChildId] = useState<string>("")
+  const [selectedChildId, setSelectedChildId] = useState<string>("child-1")
+  const { toast } = useToast()
+
+  const [rating, setRating] = useState(5)
+  const [reviewText, setReviewText] = useState("")
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+
+  const handleSubmitReview = () => {
+    setIsSubmittingReview(true)
+    setTimeout(() => {
+      setIsSubmittingReview(false)
+      toast({
+        title: "Đánh giá thành công!",
+        description: "Cảm ơn phụ huynh đã đóng góp ý kiến về Gia sư/Giáo viên.",
+        variant: "default",
+      })
+      setReviewText("")
+      setRating(5)
+    }, 1000)
+  }
 
   useEffect(() => {
     if (user?.id) {
@@ -177,7 +202,7 @@ export default function ParentChildrenPage() {
                       <p className="text-sm text-muted-foreground">{child.school}</p>
                     </div>
                     <div className="ml-auto flex gap-2">
-                      <Button variant="outline">
+                      <Button variant="outline" onClick={() => toast({ title: "Nhắn tin", description: "Đang kết nối với gia sư..." })}>
                         <MessageCircle className="h-4 w-4 mr-2" />
                         Nhắn tin
                       </Button>
@@ -203,11 +228,14 @@ export default function ParentChildrenPage() {
                           <div className="flex items-start justify-between mb-4">
                             <div>
                               <h4 className="font-semibold">{cls.subject}</h4>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground mt-1">
                                 {cls.tutor} - {cls.schedule}
                               </p>
+                              <Badge variant="secondary" className="mt-2 text-xs">
+                                {(cls as any).learningFormat === "online" ? "Học Online" : "Học Offline"}
+                              </Badge>
                             </div>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => toast({ title: "Liên hệ", description: "Đang mở cửa sổ liên hệ..." })}>
                               <Phone className="h-4 w-4 mr-1" />
                               Liên hệ
                             </Button>
@@ -295,7 +323,12 @@ export default function ParentChildrenPage() {
                             <span className="text-sm font-medium">{cls.time}</span>
                           </div>
                           <p className="font-medium">{cls.subject}</p>
-                          <p className="text-sm text-muted-foreground">{cls.tutor}</p>
+                          <p className="text-sm text-muted-foreground flex items-center justify-between">
+                            <span>{cls.tutor}</span>
+                            <span className="flex items-center gap-1">
+                              {(cls as any).type === "online" ? <><Video className="w-3 h-3" /> Online</> : <><MapPin className="w-3 h-3" /> Offline</>}
+                            </span>
+                          </p>
                         </div>
                       ))}
                     </CardContent>
@@ -308,7 +341,7 @@ export default function ParentChildrenPage() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <Button variant="outline" className="w-full justify-start bg-transparent" asChild>
-                        <Link href="/dashboard/parent/find-tutor">
+                        <Link href="/dashboard/parent/post-request">
                           <Users className="h-4 w-4 mr-2" />
                           Tìm gia sư mới
                         </Link>
@@ -319,10 +352,54 @@ export default function ParentChildrenPage() {
                           Thanh toán học phí
                         </Link>
                       </Button>
-                      <Button variant="outline" className="w-full justify-start bg-transparent">
-                        <Star className="h-4 w-4 mr-2" />
-                        Đánh giá gia sư
-                      </Button>
+
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start bg-transparent">
+                            <Star className="h-4 w-4 mr-2" />
+                            Đánh giá gia sư
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Đánh giá Gia sư</DialogTitle>
+                            <DialogDescription>
+                              Chia sẻ chất lượng giảng dạy của Gia sư để chúng tôi nâng cao chất lượng dịch vụ.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="text-sm font-medium text-muted-foreground">Chất lượng giảng dạy</span>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`w-8 h-8 cursor-pointer transition-colors ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground hover:text-yellow-200'}`}
+                                    onClick={() => setRating(star)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <span className="text-sm font-medium text-muted-foreground">Nhận xét chi tiết</span>
+                              <Textarea
+                                placeholder="Gia sư dạy dễ hiểu, học sinh có tiến bộ..."
+                                className="min-h-[100px]"
+                                value={reviewText}
+                                onChange={(e) => setReviewText(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              onClick={handleSubmitReview}
+                              disabled={isSubmittingReview || !reviewText.trim()}
+                            >
+                              {isSubmittingReview ? "Đang gửi..." : "Gửi Đánh Giá"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </CardContent>
                   </Card>
                 </div>

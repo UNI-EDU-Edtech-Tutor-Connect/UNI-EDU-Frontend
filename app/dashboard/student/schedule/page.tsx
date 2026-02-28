@@ -5,19 +5,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Calendar, Clock, Video, ChevronLeft, ChevronRight } from "lucide-react"
-
+import { Calendar, Clock, Video, ChevronLeft, ChevronRight, BookOpen, Link as LinkIcon, Download } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 const shortDayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
 
 import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "@/store"
 import { fetchStudentScheduleRequest } from "@/store/slices/student-slice"
 import { useEffect } from "react"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function StudentSchedulePage() {
   const dispatch = useDispatch()
   const { schedule } = useSelector((state: RootState) => state.student)
   const [currentWeek, setCurrentWeek] = useState(0)
+  const [selectedSchedule, setSelectedSchedule] = useState<any>(null)
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchStudentScheduleRequest())
@@ -139,9 +149,13 @@ export default function StudentSchedulePage() {
                     {daySchedule.map((schedule) => (
                       <div
                         key={schedule.id}
-                        className={`p-2 rounded-lg text-xs ${schedule.type === "online"
-                            ? "bg-blue-100 border border-blue-200"
-                            : "bg-green-100 border border-green-200"
+                        onClick={() => {
+                          setSelectedSchedule(schedule)
+                          setShowScheduleDialog(true)
+                        }}
+                        className={`p-2 rounded-lg text-xs cursor-pointer hover:opacity-80 transition-opacity ${schedule.type === "online"
+                          ? "bg-blue-100 border border-blue-200"
+                          : "bg-green-100 border border-green-200"
                           }`}
                       >
                         <p className="font-medium truncate">{schedule.subject}</p>
@@ -165,7 +179,11 @@ export default function StudentSchedulePage() {
           {getScheduleForDay(today.getDay() === 0 ? 0 : today.getDay()).length > 0 ? (
             <div className="space-y-4">
               {getScheduleForDay(today.getDay() === 0 ? 0 : today.getDay()).map((schedule) => (
-                <div key={schedule.id} className="flex items-center justify-between p-4 rounded-lg border">
+                <div key={schedule.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedSchedule(schedule)
+                    setShowScheduleDialog(true)
+                  }}>
                   <div className="flex items-center gap-4">
                     <Avatar className="h-12 w-12">
                       <AvatarFallback className="bg-primary/10 text-primary">{schedule.tutor.charAt(0)}</AvatarFallback>
@@ -184,7 +202,10 @@ export default function StudentSchedulePage() {
                         {schedule.type === "online" ? "Online" : "Tại nhà"}
                       </Badge>
                     </div>
-                    <Button>Vào lớp</Button>
+                    <Button onClick={(e) => {
+                      e.stopPropagation()
+                      toast({ title: "Đang vào lớp...", description: "Hệ thống đang kết nối phòng học ảo." })
+                    }}>Vào lớp</Button>
                   </div>
                 </div>
               ))}
@@ -197,6 +218,75 @@ export default function StudentSchedulePage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chi tiết lịch học</DialogTitle>
+            <DialogDescription>
+              {selectedSchedule?.subject}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedSchedule && (
+            <div className="space-y-6 py-4">
+              <div className="flex items-center gap-4 p-4 border rounded-lg bg-muted/30">
+                <Avatar className="h-16 w-16">
+                  <AvatarFallback className="text-xl bg-primary/10 text-primary">{selectedSchedule.tutor?.charAt(0) || "T"}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h4 className="font-semibold text-lg">{selectedSchedule.tutor}</h4>
+                  <p className="text-sm text-muted-foreground">Gia sư phụ trách</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4" /> Thời gian
+                  </p>
+                  <p className="font-semibold pl-6">
+                    {selectedSchedule.startTime} - {selectedSchedule.endTime}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" /> Loại hình
+                  </p>
+                  <p className="font-semibold pl-6">
+                    {selectedSchedule.type === "online" ? "Học Online" : "Học tại nhà"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" /> Nôi dung (dự kiến)
+                </p>
+                <div className="p-3 bg-muted rounded-md text-sm pl-6">
+                  Ôn tập lý thuyết và giải bài tập chương mới.
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                {selectedSchedule.type === "online" ? (
+                  <Button className="flex-1" onClick={() => toast({ title: "Đang vào lớp...", description: "Đang chuyển hướng đến phòng học..." })}>
+                    <Video className="h-4 w-4 mr-2" />
+                    Vào lớp ({selectedSchedule.startTime})
+                  </Button>
+                ) : (
+                  <Button className="flex-1" variant="outline" onClick={() => toast({ title: "Chỉ đường", description: "Đang mở bản đồ..." })}>
+                    Chỉ đường
+                  </Button>
+                )}
+                <Button variant="outline" className="flex-1" onClick={() => toast({ title: "Đang tải xuống", description: "Tài liệu đang được tải..." })}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Tài liệu
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

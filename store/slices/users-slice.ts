@@ -111,11 +111,13 @@ const usersSlice = createSlice({
       const tutorIndex = state.tutors.findIndex((t) => t.id === userId)
       if (tutorIndex !== -1) {
         state.tutors[tutorIndex].approvalStatus = approved ? "approved" : "rejected"
+        state.tutors[tutorIndex].backgroundCheckStatus = approved ? "passed" : "failed"
       }
 
       const teacherIndex = state.teachers.findIndex((t) => t.id === userId)
       if (teacherIndex !== -1) {
         state.teachers[teacherIndex].approvalStatus = approved ? "approved" : "rejected"
+        state.teachers[teacherIndex].backgroundCheckStatus = approved ? "passed" : "failed"
       }
     },
   },

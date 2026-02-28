@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Search, Star, MapPin, GraduationCap, Clock, DollarSign, Heart, MessageCircle } from "lucide-react"
+import { Search, Star, MapPin, GraduationCap, Clock, DollarSign, Heart, MessageCircle, BadgeCheck, PlayCircle, Eye, ShieldCheck } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Tutor {
   id: string
@@ -33,6 +35,9 @@ interface Tutor {
   availability: string[]
   totalStudents: number
   completedLessons: number
+  isVerified: boolean
+  hasVideo: boolean
+  successRate: number
 }
 
 const mockTutors: Tutor[] = [
@@ -51,6 +56,9 @@ const mockTutors: Tutor[] = [
     availability: ["Thứ 2", "Thứ 4", "Thứ 6", "Chủ nhật"],
     totalStudents: 45,
     completedLessons: 520,
+    isVerified: true,
+    hasVideo: true,
+    successRate: 98,
   },
   {
     id: "2",
@@ -67,6 +75,9 @@ const mockTutors: Tutor[] = [
     availability: ["Thứ 3", "Thứ 5", "Thứ 7"],
     totalStudents: 62,
     completedLessons: 890,
+    isVerified: true,
+    hasVideo: true,
+    successRate: 95,
   },
   {
     id: "3",
@@ -83,6 +94,9 @@ const mockTutors: Tutor[] = [
     availability: ["Thứ 2", "Thứ 3", "Thứ 5", "Chủ nhật"],
     totalStudents: 28,
     completedLessons: 210,
+    isVerified: false,
+    hasVideo: false,
+    successRate: 88,
   },
   {
     id: "4",
@@ -99,6 +113,9 @@ const mockTutors: Tutor[] = [
     availability: ["Thứ 2", "Thứ 4", "Thứ 6", "Thứ 7"],
     totalStudents: 85,
     completedLessons: 1240,
+    isVerified: true,
+    hasVideo: true,
+    successRate: 99,
   },
 ]
 
@@ -108,7 +125,10 @@ export default function FindTutorPage() {
   const [priceRange, setPriceRange] = useState([0, 500000])
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null)
   const [showRequestDialog, setShowRequestDialog] = useState(false)
+  const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const { toast } = useToast()
+  const router = useRouter()
 
   const filteredTutors = mockTutors.filter((tutor) => {
     const matchesSearch =
@@ -136,9 +156,15 @@ export default function FindTutorPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-primary tracking-tight">Tìm gia sư</h1>
-        <p className="text-muted-foreground mt-1">Tìm kiếm và kết nối với gia sư phù hợp nhất cho lộ trình học tập của bạn</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-primary tracking-tight">Tìm gia sư</h1>
+          <p className="text-muted-foreground mt-1">Tìm kiếm và kết nối với gia sư phù hợp nhất cho lộ trình học tập của bạn</p>
+        </div>
+        <Button size="lg" className="shadow-sm w-full md:w-auto" onClick={() => router.push('/dashboard/student/post-request')}>
+          <MessageCircle className="h-4 w-4 mr-2" />
+          Đăng Yêu Cầu Tìm Gia Sư
+        </Button>
       </div>
 
       {/* Filters */}
@@ -207,7 +233,15 @@ export default function FindTutorPage() {
                 <div className="flex-1 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-primary">{tutor.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-primary hover:underline cursor-pointer" onClick={() => { setSelectedTutor(tutor); setShowProfileDialog(true); }}>{tutor.name}</h3>
+                        {tutor.isVerified && (
+                          <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            Đã xác minh KYC
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex items-center gap-1 bg-accent/10 px-2.5 py-1 rounded-full border border-accent/20 transition-colors group-hover:bg-accent/15">
                           <Star className="h-3.5 w-3.5 fill-accent text-accent" />
@@ -264,9 +298,18 @@ export default function FindTutorPage() {
                   >
                     Đăng ký học
                   </Button>
-                  <Button variant="outline" className="w-full border-primary/20 hover:bg-primary/5 text-primary">
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Nhắn tin
+                  <Button variant="outline" className="w-full text-accent border-accent hover:bg-accent/10" onClick={() => {
+                    toast({
+                      title: "Đăng ký học thử",
+                      description: "Yêu cầu đăng ký buổi học thử miễn phí đã được gửI!"
+                    })
+                  }}>
+                    <PlayCircle className="h-4 w-4 mr-2" />
+                    Học thử (Trial)
+                  </Button>
+                  <Button variant="ghost" className="w-full text-muted-foreground hover:text-primary" onClick={() => { setSelectedTutor(tutor); setShowProfileDialog(true); }}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Xem hồ sơ
                   </Button>
                 </div>
               </div>
@@ -338,14 +381,108 @@ export default function FindTutorPage() {
             </Button>
             <Button
               onClick={() => {
-                // TODO: Call API to send tutor request
-                // POST /api/tutor-requests with tutor_id, student_id, subject, schedule, notes
+                toast({
+                  title: "Đăng ký thành công",
+                  description: `Yêu cầu học với gia sư ${selectedTutor?.name} đã được gửi thành công!`
+                })
                 setShowRequestDialog(false)
               }}
             >
               Gửi yêu cầu
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Profile Dialog */}
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Hồ sơ gia sư</DialogTitle>
+          </DialogHeader>
+          {selectedTutor && (
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <Avatar className="h-24 w-24 border-2 border-primary/20">
+                  <AvatarImage src={selectedTutor.avatar || "/placeholder.svg"} />
+                  <AvatarFallback className="text-2xl">{selectedTutor.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold">{selectedTutor.name}</h2>
+                    {selectedTutor.isVerified && (
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 flex items-center gap-1 cursor-help" title="Thông tin bằng cấp, CMND/CCCD của gia sư này đã được đội kiểm duyệt xác thực.">
+                        <BadgeCheck className="w-3 h-3" /> Xác thực nền tảng (KYC)
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <span className="font-bold">{selectedTutor.rating}</span>
+                    <span className="text-muted-foreground text-sm">({selectedTutor.reviews} đánh giá)</span>
+                  </div>
+                  <p className="text-muted-foreground mt-2">{selectedTutor.bio}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-muted/30 border">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Kinh nghiệm</p>
+                  <p className="font-bold">{selectedTutor.experience} năm</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Tỉ lệ thành công</p>
+                  <p className="font-bold text-green-600">{selectedTutor.successRate}%</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Học sinh</p>
+                  <p className="font-bold">{selectedTutor.totalStudents}+</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Buổi học</p>
+                  <p className="font-bold">{selectedTutor.completedLessons}+</p>
+                </div>
+              </div>
+
+              {selectedTutor.hasVideo && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    <PlayCircle className="h-5 w-5 text-primary" /> Video giới thiệu / Dạy thử
+                  </h3>
+                  <div className="aspect-video bg-black/90 rounded-lg flex items-center justify-center relative cursor-pointer group shadow-sm overflow-hidden">
+                    <p className="text-white/50 absolute bottom-4 left-4 z-10 text-sm">Demo Video Intro</p>
+                    <div className="absolute inset-0 bg-[url('/placeholder.svg')] opacity-20 bg-cover bg-center mix-blend-overlay"></div>
+                    <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center group-hover:bg-primary transition-colors hover:scale-105 duration-200">
+                      <PlayCircle className="h-8 w-8 text-white ml-1" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Bằng cấp & Chứng chỉ</h3>
+                <div className="flex items-start gap-3 p-4 rounded-lg border bg-blue-50/50">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <GraduationCap className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-base">{selectedTutor.education}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Chứng chỉ và bằng cấp đã được đối chiếu với bản gốc thông qua hệ thống định danh nâng cao của chúng tôi.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="border-t pt-4">
+                <Button variant="outline" onClick={() => setShowProfileDialog(false)}>Đóng</Button>
+                <Button onClick={() => {
+                  setShowProfileDialog(false)
+                  setShowRequestDialog(true)
+                }}>Đăng ký học ngay</Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

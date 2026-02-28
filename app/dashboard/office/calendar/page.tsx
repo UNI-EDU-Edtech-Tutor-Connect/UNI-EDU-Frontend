@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ChevronLeft, ChevronRight, Plus, Calendar, Clock, Phone, Video, MapPin, BookOpen } from "lucide-react"
-import { format, parseISO, addMinutes, isSameDay } from "date-fns"
+import { format, parseISO, addMinutes, isSameDay, isValid } from "date-fns"
 import { vi } from "date-fns/locale"
 
 const weekDays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
@@ -41,25 +41,30 @@ export default function CalendarPage() {
   }, [dispatch])
 
   // Map class sessions to appointments
-  const sessionAppointments = sessions.map(session => ({
-    id: session.id,
-    title: `Lớp học: ${session.classId}`,
-    client: { name: "Học viên", phone: "" },
-    type: "class_session",
-    time: `${format(parseISO(session.scheduledAt), "HH:mm")} - ${format(addMinutes(parseISO(session.scheduledAt), session.duration), "HH:mm")}`,
-    date: session.scheduledAt,
-    location: "Online",
-    notes: session.notes || "Buổi học định kỳ",
-    status: session.status === 'scheduled' ? 'confirmed' : session.status
-  }))
+  const sessionAppointments = sessions.map(session => {
+    const scheduledDate = session.scheduledAt ? parseISO(session.scheduledAt) : null;
+    const isValidDate = scheduledDate && isValid(scheduledDate);
+    const endTime = isValidDate ? addMinutes(scheduledDate, session.duration || 60) : null;
+    return {
+      id: session.id,
+      title: `Lớp học: ${session.classId}`,
+      client: { name: "Học viên", phone: "" },
+      type: "class_session",
+      time: isValidDate ? `${format(scheduledDate, "HH:mm")} - ${format(endTime!, "HH:mm")}` : "Không rõ",
+      date: session.scheduledAt || new Date().toISOString(),
+      location: "Online",
+      notes: session.notes || "Buổi học định kỳ",
+      status: session.status === 'scheduled' ? 'confirmed' : session.status
+    }
+  })
 
   const allAppointments = [...sessionAppointments, ...officeAppointments]
 
   // Filter for selected date
-  const todayAppointments = allAppointments.filter((apt) =>
-    // Parse ISO date from API
-    isSameDay(parseISO(apt.date), selectedDate)
-  )
+  const todayAppointments = allAppointments.filter((apt) => {
+    const parsed = apt.date ? parseISO(apt.date) : null;
+    return parsed && isValid(parsed) && isSameDay(parsed, selectedDate);
+  })
 
   const getTypeBadge = (type: string) => {
     switch (type) {

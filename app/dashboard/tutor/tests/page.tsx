@@ -169,7 +169,7 @@ export default function TutorTestsPage() {
                     </div>
 
                     <Button className="w-full" asChild>
-                      <Link href={`/dashboard/tutor/classes/${test.classId}/test`}>
+                      <Link href={`/dashboard/tutor/tests/${test.id}`}>
                         <BookOpen className="h-4 w-4 mr-2" />
                         Làm bài test
                       </Link>

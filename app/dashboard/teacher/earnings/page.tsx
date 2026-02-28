@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Wallet, TrendingUp, Calendar, DollarSign, Download, ArrowUpRight, Clock, CheckCircle } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
@@ -51,6 +52,7 @@ const mockTransactions = [
 
 export default function TeacherEarningsPage() {
   const [selectedMonth, setSelectedMonth] = useState("12-2025")
+  const { toast } = useToast()
 
   const growthRate = ((mockEarnings.thisMonth - mockEarnings.lastMonth) / mockEarnings.lastMonth) * 100
 
@@ -61,7 +63,7 @@ export default function TeacherEarningsPage() {
           <h1 className="text-2xl font-bold text-foreground">Thu nhập</h1>
           <p className="text-muted-foreground">Theo dõi thu nhập và lịch sử thanh toán</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => toast({ title: "Thành công", description: "Đang tải xuống báo cáo..." })}>
           <Download className="h-4 w-4 mr-2" />
           Xuất báo cáo
         </Button>
@@ -146,9 +148,8 @@ export default function TeacherEarningsPage() {
                 <div key={tx.id} className="flex items-center justify-between p-4 rounded-lg border">
                   <div className="flex items-center gap-4">
                     <div
-                      className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                        tx.status === "completed" ? "bg-green-100" : "bg-orange-100"
-                      }`}
+                      className={`h-10 w-10 rounded-lg flex items-center justify-center ${tx.status === "completed" ? "bg-green-100" : "bg-orange-100"
+                        }`}
                     >
                       {tx.status === "completed" ? (
                         <CheckCircle className="h-5 w-5 text-green-600" />
@@ -207,7 +208,10 @@ export default function TeacherEarningsPage() {
               <p className="text-2xl font-bold text-green-600">{formatCurrency(mockEarnings.thisMonth * 0.9)}</p>
             </div>
 
-            <Button className="w-full">
+            <Button
+              className="w-full"
+              onClick={() => toast({ title: "Thành công", description: "Yêu cầu rút tiền đang được xử lý." })}
+            >
               <DollarSign className="h-4 w-4 mr-2" />
               Yêu cầu rút tiền
             </Button>

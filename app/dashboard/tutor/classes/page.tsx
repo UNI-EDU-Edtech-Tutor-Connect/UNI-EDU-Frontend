@@ -11,7 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StatusBadge } from "@/components/dashboard/status-badge"
-import { BookOpen, MapPin, Calendar, Search, Filter, Eye, FileText } from "lucide-react"
+import { BookOpen, MapPin, Calendar, Search, Filter, Eye, FileText, CheckCircle2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
 import type { ClassRequest } from "@/types"
 import Link from "next/link"
 
@@ -28,6 +37,7 @@ export default function TutorClassesPage() {
   const { subjects } = useAppSelector((state) => state.subjects)
   const [searchQuery, setSearchQuery] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchClassesRequest())
@@ -35,9 +45,17 @@ export default function TutorClassesPage() {
   }, [dispatch])
 
   const myClasses = (classRequests || []).filter(
-    (c) => c.assignedTutorId === user?.id && (c.status === "in_progress" || c.status === "pending_payment"),
+    (c) => c.assignedTutorId === user?.id && (c.status === "in_progress" || c.status === "pending_payment" || c.status === "completed"),
   )
   const availableClasses = (classRequests || []).filter((c) => c.status === "open")
+
+  const filteredMy = myClasses.filter((c) => {
+    const matchesSearch =
+      c.subjectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.studentName.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSubject = subjectFilter === "all" || c.subjectId === subjectFilter
+    return matchesSearch && matchesSubject
+  })
 
   const filteredAvailable = availableClasses.filter((c) => {
     const matchesSearch =
@@ -114,16 +132,72 @@ export default function TutorClassesPage() {
                 Chi tiết
               </Link>
             </Button>
-            <Button className="flex-1">Vào lớp học</Button>
+            <Button className="flex-1" asChild>
+              <Link href={`/dashboard/virtual-room/${classItem.id}`}>Vào lớp học</Link>
+            </Button>
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1 bg-transparent" asChild>
-              <Link href={`/dashboard/tutor/classes/${classItem.id}`}>
-                <Eye className="h-4 w-4 mr-2" />
-                Xem chi tiết
-              </Link>
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="flex-1 bg-transparent">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Xem nhanh
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    Lớp {classItem.subjectName} - {classItem.grade}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Chi tiết yêu cầu tìm gia sư
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div className="grid grid-cols-3 gap-2 py-2 border-b">
+                      <span className="text-muted-foreground">Học sinh:</span>
+                      <span className="col-span-2 font-medium">{classItem.studentName}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 py-2 border-b">
+                      <span className="text-muted-foreground">Khu vực:</span>
+                      <span className="col-span-2 font-medium">{classItem.location || "Chưa xác định"}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 py-2 border-b">
+                      <span className="text-muted-foreground">Hình thức:</span>
+                      <span className="col-span-2 font-medium capitalize">{classItem.learningFormat}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 py-2 border-b">
+                      <span className="text-muted-foreground">Lịch học mong muốn:</span>
+                      <div className="col-span-2 flex flex-wrap gap-1">
+                        {classItem.preferredSchedule.map((s, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {dayNames[s.dayOfWeek]} {s.startTime}-{s.endTime}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 py-2 border-b">
+                      <span className="text-muted-foreground">Ngân sách/tháng:</span>
+                      <span className="col-span-2 font-bold text-accent">{formatCurrency(classItem.monthlyBudget)}</span>
+                    </div>
+                    {classItem.requirements && (
+                      <div className="grid grid-cols-3 gap-2 py-2">
+                        <span className="text-muted-foreground">Yêu cầu thêm:</span>
+                        <span className="col-span-2 text-muted-foreground">{classItem.requirements}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 w-full mt-2">
+                  <Button className="w-full bg-accent hover:bg-accent/90" asChild>
+                    <Link href={`/dashboard/tutor/classes/${classItem.id}/test`}>Làm test nhận lớp ngay</Link>
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Button className="flex-1 bg-accent hover:bg-accent/90" asChild>
               <Link href={`/dashboard/tutor/classes/${classItem.id}/test`}>
                 <FileText className="h-4 w-4 mr-2" />
@@ -162,18 +236,44 @@ export default function TutorClassesPage() {
         </TabsList>
 
         {/* My Classes */}
-        <TabsContent value="my-classes" className="space-y-4">
-          {myClasses.length === 0 ? (
+        <TabsContent value="my-classes" className="space-y-6">
+          {/* Search & Filter */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Tìm theo môn học, học sinh..."
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Lọc theo môn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả môn</SelectItem>
+                {subjects.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredMy.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium">Bạn chưa có lớp nào</p>
-                <p className="text-muted-foreground">Hãy tìm và đăng ký lớp mới</p>
+                <p className="text-lg font-medium">Bạn chưa có lớp hoặc không tìm thấy lớp phù hợp</p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myClasses.map((classItem) => (
+              {filteredMy.map((classItem) => (
                 <ClassCard key={classItem.id} classItem={classItem} isMyClass={true} />
               ))}
             </div>

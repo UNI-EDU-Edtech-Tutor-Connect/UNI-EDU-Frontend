@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Providers } from "@/components/providers"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 const _inter = Inter({ subsets: ["latin", "vietnamese"] })
@@ -41,6 +42,7 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         <Providers>{children}</Providers>
         <Analytics />
+        <Toaster />
       </body>
     </html>
   )

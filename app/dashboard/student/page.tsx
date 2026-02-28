@@ -20,7 +20,7 @@ export default function StudentDashboard() {
   const { user } = useSelector((state: RootState) => state.auth)
   const { classRequests } = useSelector((state: RootState) => state.classes)
 
-  const { tests, completedTests } = useSelector((state: RootState) => state.tests)
+  const { tests, completedTests, availableTests: availableTestsStore } = useSelector((state: RootState) => state.tests)
   const { schedule } = useSelector((state: RootState) => state.student)
   // const { user } = useSelector((state: RootState) => state.auth) // Already present
 
@@ -30,14 +30,25 @@ export default function StudentDashboard() {
     dispatch(fetchStudentScheduleRequest())
     if (user?.id) {
       dispatch(fetchCompletedTestsRequest(user.id))
+      // Use existing action for available tests
+      dispatch({ type: "tests/fetchAvailableTestsRequest", payload: user.id })
     }
   }, [dispatch, user?.id])
 
-  const myClasses = (classRequests || []).filter((c) => c.studentId === (user?.id || ""))
-  const availableTests = (tests || []).filter((t) => t.status === "published" || !t.status) // Allowing undefined for mocks
-
   const upcomingSchedule = schedule || []
   const recentResults = completedTests || []
+  const myClasses = (classRequests || []).filter((c: any) => c.studentId === (user?.id || ""))
+
+  const formattedAvailableTests = availableTestsStore && availableTestsStore.length > 0
+    ? availableTestsStore.map((t: any) => ({
+      ...t,
+      title: t.className || t.title || "Bài kiểm tra",
+      questionsCount: typeof t.questions === "number" ? t.questions : t.questions?.length || 0
+    }))
+    : (tests || []).filter((t: any) => t.status === "published" || !t.status).map((t: any) => ({
+      ...t,
+      questionsCount: t.questions?.length || 0
+    }))
 
   return (
     <div className="space-y-6">
@@ -62,7 +73,7 @@ export default function StudentDashboard() {
         />
         <StatsCard
           title="Bài kiểm tra"
-          value={availableTests.length.toString()}
+          value={formattedAvailableTests.length.toString()}
           description="Có thể làm"
           icon={<FileText className="h-4 w-4 text-muted-foreground" />}
         />
@@ -169,16 +180,16 @@ export default function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {availableTests.slice(0, 4).map((test) => (
+              {formattedAvailableTests.slice(0, 4).map((test) => (
                 <div key={test.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <h4 className="font-medium">{test.title}</h4>
                     <p className="text-sm text-muted-foreground">
-                      {test.duration} phút - {test.questions?.length || 0} câu hỏi
+                      {test.duration} phút - {test.questionsCount} câu hỏi
                     </p>
                   </div>
                   <Button size="sm" asChild>
-                    <Link href={`/dashboard/student/tests/${test.id}`}>Làm bài</Link>
+                    <Link href={`/dashboard/student/tests/${test.id}/start`}>Làm bài</Link>
                   </Button>
                 </div>
               ))}
@@ -229,7 +240,7 @@ export default function StudentDashboard() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {myClasses.length > 0 ? (
-              myClasses.map((cls) => (
+              myClasses.map((cls: any) => (
                 <div key={cls.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <Badge>{cls.subjectName}</Badge>
@@ -241,7 +252,7 @@ export default function StudentDashboard() {
                     {cls.subjectName} - Lớp {cls.grade}
                   </h4>
                   <p className="text-sm text-muted-foreground mb-3">
-                    {cls.preferredSchedule.map(s => `${s.dayOfWeek === 1 ? "CN" : "T" + s.dayOfWeek}: ${s.startTime}-${s.endTime}`).join(", ")}
+                    {cls.preferredSchedule.map((s: any) => `${s.dayOfWeek === 1 ? "CN" : "T" + s.dayOfWeek}: ${s.startTime}-${s.endTime}`).join(", ")}
                   </p>
                   <div className="flex items-center gap-2 mb-3">
                     <Avatar className="h-6 w-6">

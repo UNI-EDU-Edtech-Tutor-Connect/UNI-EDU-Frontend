@@ -5,8 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import { BookOpen, Calendar, Clock, Video, MapPin, Star, ArrowRight, Users } from "lucide-react"
+import { BookOpen, Calendar, Clock, Video, MapPin, Star, ArrowRight, Users, MessageSquare } from "lucide-react"
 import Link from "next/link"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/use-toast"
+import { useState } from "react"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
@@ -21,6 +33,25 @@ export default function StudentClassesPage() {
   const dispatch = useDispatch()
   const { user } = useSelector((state: RootState) => state.auth)
   const { classRequests: classes, sessions } = useSelector((state: RootState) => state.classes) // Alias classRequests as classes for now, but really should be specific
+  const { toast } = useToast()
+
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+  const [rating, setRating] = useState(5)
+  const [reviewText, setReviewText] = useState("")
+
+  const handleSubmitReview = (classId: string) => {
+    setIsSubmittingReview(true)
+    setTimeout(() => {
+      setIsSubmittingReview(false)
+      toast({
+        title: "Đánh giá thành công!",
+        description: "Cảm ơn bạn đã đóng góp ý kiến về Gia sư/Giáo viên.",
+        variant: "default",
+      })
+      setReviewText("")
+      setRating(5)
+    }, 1000)
+  }
 
   useEffect(() => {
     dispatch(fetchClassesRequest())
@@ -161,12 +192,22 @@ export default function StudentClassesPage() {
                       </div>
                     </div>
 
-                    <Button className="w-full" asChild>
-                      <Link href={`/dashboard/student/classes/${cls.id}`}>
-                        Chi tiết lớp
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Link>
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button className="flex-1" variant="outline" asChild>
+                        <Link href={`/dashboard/student/classes/${cls.id}`}>
+                          Chi tiết
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Link>
+                      </Button>
+                      {cls.learningFormat === "online" && (
+                        <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" asChild>
+                          <a href="https://zoom.us/test" target="_blank" rel="noopener noreferrer">
+                            <Video className="h-4 w-4 mr-2" />
+                            Vào lớp
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )
@@ -197,7 +238,56 @@ export default function StudentClassesPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="secondary">Hoàn thành</Badge>
+                      <div className="flex flex-col gap-2 items-end">
+                        <Badge variant="secondary">Hoàn thành</Badge>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8">
+                              <MessageSquare className="w-3 h-3 mr-1" />
+                              Đánh giá
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Đánh giá Gia sư</DialogTitle>
+                              <DialogDescription>
+                                Chia sẻ trải nghiệm học tập của bạn để giúp Gia sư vươn lên và hỗ trợ hàng ngàn học sinh khác.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="flex flex-col items-center gap-2">
+                                <span className="text-sm font-medium text-muted-foreground">Chất lượng giảng dạy</span>
+                                <div className="flex items-center gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`w-8 h-8 cursor-pointer transition-colors ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground hover:text-yellow-200'}`}
+                                      onClick={() => setRating(star)}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <span className="text-sm font-medium text-muted-foreground">Nhận xét chi tiết</span>
+                                <Textarea
+                                  placeholder="Gia sư dạy dễ hiểu, nhiệt tình..."
+                                  className="min-h-[100px]"
+                                  value={reviewText}
+                                  onChange={(e) => setReviewText(e.target.value)}
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                onClick={() => handleSubmitReview(cls.id)}
+                                disabled={isSubmittingReview || !reviewText.trim()}
+                              >
+                                {isSubmittingReview ? "Đang gửi..." : "Gửi Đánh Giá"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

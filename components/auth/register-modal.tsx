@@ -50,7 +50,7 @@ export function RegisterModal() {
 
   return (
     <Dialog open={registerModalOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">Đăng ký tài khoản</DialogTitle>
         </DialogHeader>
@@ -123,6 +123,68 @@ export function RegisterModal() {
               minLength={8}
             />
           </div>
+
+          {/* Conditional Fields Based on Role */}
+          {formData.role === "tutor" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="university">Trường Đại học</Label>
+                <Input id="university" placeholder="VD: Đại học Quốc gia HTT" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="studentId">Mã số sinh viên</Label>
+                <Input id="studentId" placeholder="VD: 2024001" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="transcript">Bảng điểm (PDF / Hình ảnh)</Label>
+                <Input id="transcript" type="file" accept="image/*,.pdf" required />
+                <p className="text-xs text-muted-foreground">Kèm hình ảnh thẻ sinh viên hoặc giấy xác nhận sinh viên</p>
+              </div>
+            </>
+          )}
+
+          {formData.role === "teacher" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="institution">Trường / Cơ quan công tác</Label>
+                <Input id="institution" placeholder="VD: THPT Chuyên Lê Hồng Phong" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="experience">Số năm kinh nghiệm</Label>
+                <Input id="experience" type="number" min="0" placeholder="VD: 5" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="degree">Văn bằng tốt nghiệp</Label>
+                <Input id="degree" type="file" accept="image/*,.pdf" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="certificate">Chứng chỉ sư phạm</Label>
+                <Input id="certificate" type="file" accept="image/*,.pdf" required />
+              </div>
+            </>
+          )}
+
+          {formData.role === "student" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="grade">Khối lớp hiện tại</Label>
+                <Select required defaultValue="10">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn lớp" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[...Array(12)].map((_, i) => (
+                      <SelectItem key={i} value={(i + 1).toString()}>Lớp {i + 1}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="school">Trường học</Label>
+                <Input id="school" placeholder="VD: THPT Nguyễn Trãi" />
+              </div>
+            </>
+          )}
 
           <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

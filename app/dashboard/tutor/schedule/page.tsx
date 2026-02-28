@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar, Clock, Video, MapPin, ChevronLeft, ChevronRight, BookOpen, CheckCircle, Users } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
 import type { ClassSession } from "@/types"
 
 const dayNames = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"]
@@ -31,6 +32,7 @@ export default function TutorSchedulePage() {
   const [showAttendanceDialog, setShowAttendanceDialog] = useState(false)
   const [attendanceStatus, setAttendanceStatus] = useState(true)
   const [sessionNotes, setSessionNotes] = useState("")
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchClassesRequest())
@@ -161,14 +163,25 @@ export default function TutorSchedulePage() {
                     </div>
                     <Badge variant="default">Online</Badge>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    {new Date(session.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                    {" - "}
-                    {new Date(new Date(session.scheduledAt).getTime() + session.duration * 60000).toLocaleTimeString("vi-VN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                  <div className="flex items-center justify-between mt-4 border-t pt-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      {new Date(session.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                      {" - "}
+                      {new Date(new Date(session.scheduledAt).getTime() + session.duration * 60000).toLocaleTimeString("vi-VN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toast({ title: "Đang vào lớp...", description: "Hệ thống đang kết nối đến phòng học ảo." });
+                      }}
+                    >
+                      Vào lớp
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -218,8 +231,8 @@ export default function TutorSchedulePage() {
                       <div
                         key={session.id}
                         className={`p-2 rounded text-xs cursor-pointer transition-colors border ${session.status === 'completed' ? 'bg-green-100 border-green-200 text-green-800' :
-                            session.status === 'scheduled' ? 'bg-primary/10 border-primary/20 hover:bg-primary/20' :
-                              'bg-gray-100'
+                          session.status === 'scheduled' ? 'bg-primary/10 border-primary/20 hover:bg-primary/20' :
+                            'bg-gray-100'
                           }`}
                         onClick={() => handleSessionClick(session)}
                       >
@@ -305,15 +318,24 @@ export default function TutorSchedulePage() {
                 <p className="text-sm text-muted-foreground">{selectedSession.notes || "Không có ghi chú"}</p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 border-t pt-4 mt-4">
                 <Button variant="outline" className="flex-1 bg-transparent" asChild>
-                  <Link href={`/dashboard/tutor/classes/${selectedSession.classId}`}>Xem lớp học</Link>
+                  <Link href={`/dashboard/tutor/classes/${selectedSession.classId}`}>Xem</Link>
                 </Button>
                 {selectedSession.status === 'scheduled' && (
-                  <Button className="flex-1" onClick={handleStartAttendance}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Điểm danh
-                  </Button>
+                  <>
+                    <Button className="flex-1" onClick={handleStartAttendance}>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Điểm danh
+                    </Button>
+                    <Button className="flex-1 bg-accent hover:bg-accent/90" onClick={() => {
+                      setShowSessionDialog(false);
+                      toast({ title: "Đang vào lớp...", description: "Hệ thống đang kết nối đến phòng học ảo." });
+                    }}>
+                      <Video className="h-4 w-4 mr-2" />
+                      Vào lớp
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

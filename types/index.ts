@@ -138,7 +138,7 @@ export interface ClassSession {
   studentId: string
   scheduledAt: string
   duration: number // minutes
-  status: "scheduled" | "completed" | "cancelled" | "absent_student" | "absent_tutor"
+  status: "scheduled" | "completed" | "cancelled" | "absent_student" | "absent_tutor" | "pending_confirmation" | "reported"
   notes?: string
   rating?: number
 }

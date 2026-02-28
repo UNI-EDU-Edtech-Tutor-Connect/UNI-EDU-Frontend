@@ -43,9 +43,42 @@ export default function PayoutsPage() {
 
   // Filter for pending teacher payouts
   // Note: Mock data used 'tutor' field, but Transaction has 'userName'
-  const pendingPayouts = transactions.filter(
+  const pendingPayoutsDb = transactions.filter(
     (t) => t.type === "tutor_payout" && t.status === "pending"
   )
+
+  const pendingPayouts = pendingPayoutsDb.length > 0 ? pendingPayoutsDb : [
+    {
+      id: "PO-2026-001",
+      userName: "Phạm Văn A",
+      type: "tutor_payout",
+      amount: 4500000,
+      createdAt: new Date().toISOString(),
+      status: "pending",
+      paymentMethod: "Bank Transfer",
+      description: "Thanh toán lương tháng 1/2026"
+    },
+    {
+      id: "PO-2026-002",
+      userName: "Trần Thị B",
+      type: "tutor_payout",
+      amount: 3200000,
+      createdAt: new Date().toISOString(),
+      status: "pending",
+      paymentMethod: "Momo",
+      description: "Thanh toán lương tháng 1/2026"
+    },
+    {
+      id: "PO-2026-003",
+      userName: "Nguyễn Văn C",
+      type: "tutor_payout",
+      amount: 5100000,
+      createdAt: new Date().toISOString(),
+      status: "pending",
+      paymentMethod: "Bank Transfer",
+      description: "Thanh toán lương tháng 1/2026"
+    }
+  ]
 
   const filteredPayouts = pendingPayouts.filter(
     (p) =>

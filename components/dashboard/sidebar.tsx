@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAppDispatch, useAppSelector } from "@/hooks/use-redux"
 import { logout } from "@/store/slices/auth-slice"
 import { toggleSidebar } from "@/store/slices/ui-slice"
+import { useToast } from "@/components/ui/use-toast"
 import {
   GraduationCap,
   LayoutDashboard,
@@ -29,6 +30,8 @@ import {
   FileText,
   AlertTriangle,
   TestTube,
+  MessageCircle,
+  ShieldCheck,
 } from "lucide-react"
 import type { UserRole } from "@/types"
 
@@ -48,6 +51,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { title: "Bài test", href: "/dashboard/admin/tests", icon: FileCheck },
     { title: "Giao dịch", href: "/dashboard/admin/transactions", icon: CreditCard },
     { title: "Báo cáo", href: "/dashboard/admin/reports", icon: BarChart3 },
+    { title: "Audit Log", href: "/dashboard/admin/audit-log", icon: FileText },
     { title: "Cài đặt", href: "/dashboard/admin/settings", icon: Settings },
   ],
   test_user: [
@@ -56,13 +60,14 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { title: "Ngân hàng đề", href: "/dashboard/test_user/bank", icon: ClipboardList },
   ],
   test_manager: [
-    { title: "Tổng quan", href: "/dashboard/test_manager", icon: LayoutDashboard },
-    { title: "Quản lý đề", href: "/dashboard/test_manager/tests", icon: FileCheck },
-    { title: "Kết quả thi", href: "/dashboard/test_manager/results", icon: BarChart3 },
-    { title: "AI Generate", href: "/dashboard/test_manager/ai", icon: TestTube },
+    { title: "Tổng quan", href: "/dashboard/test-manager", icon: LayoutDashboard },
+    { title: "Quản lý đề", href: "/dashboard/test-manager/tests", icon: FileCheck },
+    { title: "Kết quả thi", href: "/dashboard/test-manager/results", icon: BarChart3 },
+    { title: "AI Generate", href: "/dashboard/test-manager/ai-generate", icon: TestTube },
   ],
   tutor: [
     { title: "Tổng quan", href: "/dashboard/tutor", icon: LayoutDashboard },
+    { title: "Tin nhắn", href: "/dashboard/tutor/messages", icon: MessageCircle, badge: 3 },
     { title: "Lớp học", href: "/dashboard/tutor/classes", icon: BookOpen },
     { title: "Lịch dạy", href: "/dashboard/tutor/schedule", icon: Calendar },
     { title: "Học sinh", href: "/dashboard/tutor/students", icon: Users },
@@ -71,6 +76,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
   ],
   teacher: [
     { title: "Tổng quan", href: "/dashboard/teacher", icon: LayoutDashboard },
+    { title: "Tin nhắn", href: "/dashboard/teacher/messages", icon: MessageCircle, badge: 1 },
     { title: "Lớp học", href: "/dashboard/teacher/classes", icon: BookOpen },
     { title: "Lịch dạy", href: "/dashboard/teacher/schedule", icon: Calendar },
     { title: "Học sinh", href: "/dashboard/teacher/students", icon: Users },
@@ -79,14 +85,19 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
   ],
   student: [
     { title: "Tổng quan", href: "/dashboard/student", icon: LayoutDashboard },
+    { title: "Tin nhắn", href: "/dashboard/student/messages", icon: MessageCircle, badge: 2 },
+    { title: "Tìm gia sư", href: "/dashboard/student/find-tutor", icon: Users },
     { title: "Lớp học", href: "/dashboard/student/classes", icon: BookOpen },
     { title: "Lịch học", href: "/dashboard/student/schedule", icon: Calendar },
     { title: "Bài test", href: "/dashboard/student/tests", icon: FileCheck },
     { title: "Thi thử", href: "/dashboard/student/practice", icon: TestTube },
     { title: "Kết quả", href: "/dashboard/student/results", icon: BarChart3 },
+    { title: "Báo cáo", href: "/dashboard/student/reports", icon: BarChart3 },
   ],
   parent: [
     { title: "Tổng quan", href: "/dashboard/parent", icon: LayoutDashboard },
+    { title: "Tin nhắn", href: "/dashboard/parent/messages", icon: MessageCircle },
+    { title: "Tìm gia sư", href: "/dashboard/parent/find-tutor", icon: UserCheck },
     { title: "Con em", href: "/dashboard/parent/children", icon: Users },
     { title: "Báo cáo", href: "/dashboard/parent/reports", icon: BarChart3 },
     { title: "Thanh toán", href: "/dashboard/parent/payments", icon: CreditCard },
@@ -96,10 +107,10 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { title: "Giao dịch", href: "/dashboard/accountant/transactions", icon: CreditCard },
     { title: "Chi trả", href: "/dashboard/accountant/payouts", icon: Wallet },
     { title: "Báo cáo", href: "/dashboard/accountant/reports", icon: BarChart3 },
-    { title: "Audit Log", href: "/dashboard/accountant/audit", icon: FileText },
   ],
   office: [
     { title: "Tổng quan", href: "/dashboard/office", icon: LayoutDashboard },
+    { title: "Tin nhắn", href: "/dashboard/office/messages", icon: MessageCircle, badge: 9 },
     { title: "Điểm danh", href: "/dashboard/office/attendance", icon: ClipboardList },
     { title: "Cảnh báo", href: "/dashboard/office/alerts", icon: AlertTriangle, badge: 28 },
     { title: "Lớp học", href: "/dashboard/office/classes", icon: BookOpen },
@@ -112,6 +123,7 @@ export function DashboardSidebar() {
   const dispatch = useAppDispatch()
   const { user } = useAppSelector((state) => state.auth)
   const { sidebarOpen } = useAppSelector((state) => state.ui)
+  const { toast } = useToast();
 
   if (!user) return null
 
@@ -163,8 +175,17 @@ export function DashboardSidebar() {
             </div>
             {sidebarOpen && (
               <div className="overflow-hidden">
-                <p className="font-medium truncate">{user.fullName}</p>
-                <p className="text-xs text-sidebar-foreground/70 capitalize">{user.role.replace("_", " ")}</p>
+                <p className="font-medium truncate flex items-center gap-1">
+                  {user.fullName}
+                </p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <p className="text-xs text-sidebar-foreground/70 capitalize">{user.role.replace("_", " ")}</p>
+                  {user.role === "teacher" && (
+                    <span title="Giáo viên đã kiểm định Bằng Đại học">
+                      <ShieldCheck className="h-3 w-3 text-amber-500" />
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>

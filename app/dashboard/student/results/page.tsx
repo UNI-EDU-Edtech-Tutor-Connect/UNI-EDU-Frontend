@@ -1,13 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
+
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { Trophy, TrendingUp, Target, Calendar, CheckCircle, XCircle, Eye, BarChart3 } from "lucide-react"
+import { Trophy, TrendingUp, Target, Calendar, CheckCircle, XCircle, Eye, BarChart3, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
+
+const ITEMS_PER_PAGE = 6
 
 import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "@/store"
@@ -21,6 +25,7 @@ export default function StudentResultsPage() {
 
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (user?.id) {
@@ -29,26 +34,46 @@ export default function StudentResultsPage() {
   }, [dispatch, user?.id])
 
   // Need to map CompletedTest to expected format or adjust usage
-  const formattedResults = (completedTests || []).map(t => ({
-    id: t.id,
-    testTitle: t.className || "Bài kiểm tra",
-    subject: t.subject || "unknown", // Map ?
-    type: "test", // Default
-    score: t.score,
-    total: 100, // Assume 100 max
-    correct: 0, // Unknown
-    wrong: 0, // Unknown
-    date: new Date(t.completedAt).toLocaleDateString("vi-VN"),
-    duration: 0, // Unknown
-    passingScore: t.passingScore || 50,
-    passed: t.passed
-  }))
+  const formattedResults = useMemo(() => {
+    const items = (completedTests || []).map(t => ({
+      id: t.id,
+      testTitle: t.className || "Bài kiểm tra",
+      subject: t.subject || "unknown",
+      type: "test",
+      score: t.score,
+      total: 100,
+      correct: 0,
+      wrong: 0,
+      date: new Date(t.completedAt).toLocaleDateString("vi-VN"),
+      completedAt: t.completedAt,
+      duration: 0,
+      passingScore: t.passingScore || 50,
+      passed: t.passed
+    }))
+    // Sort newest first
+    return items.sort((a, b) => {
+      const dateA = new Date(a.completedAt).getTime()
+      const dateB = new Date(b.completedAt).getTime()
+      if (isNaN(dateA) || isNaN(dateB)) return 0
+      return dateB - dateA
+    })
+  }, [completedTests])
 
-  const filteredResults = formattedResults.filter((result) => {
-    const matchesSubject = subjectFilter === "all" || result.subject === subjectFilter
-    const matchesType = typeFilter === "all" || result.type === typeFilter
-    return matchesSubject && matchesType
-  })
+  const filteredResults = useMemo(() => {
+    return formattedResults.filter((result) => {
+      const matchesSubject = subjectFilter === "all" || result.subject === subjectFilter
+      const matchesType = typeFilter === "all" || result.type === typeFilter
+      return matchesSubject && matchesType
+    })
+  }, [formattedResults, subjectFilter, typeFilter])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [subjectFilter, typeFilter])
+
+  const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE)
+  const paginatedResults = filteredResults.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   const getSubjectLabel = (subject: string) => {
     switch (subject) {
@@ -159,10 +184,10 @@ export default function StudentResultsPage() {
                   <Progress
                     value={subjectAvg}
                     className={`h-3 ${subjectAvg >= 80
-                        ? "[&>div]:bg-green-500"
-                        : subjectAvg >= 60
-                          ? "[&>div]:bg-yellow-500"
-                          : "[&>div]:bg-red-500"
+                      ? "[&>div]:bg-green-500"
+                      : subjectAvg >= 60
+                        ? "[&>div]:bg-yellow-500"
+                        : "[&>div]:bg-red-500"
                       }`}
                   />
                 </div>
@@ -200,7 +225,7 @@ export default function StudentResultsPage() {
 
       {/* Results List */}
       <div className="space-y-4">
-        {filteredResults.map((result) => {
+        {paginatedResults.map((result) => {
           const percentage = result.score // Assuming score is percentage or 0-100
           const passed = result.passed
 
@@ -248,7 +273,7 @@ export default function StudentResultsPage() {
                       <p className="text-sm text-muted-foreground">Điểm số</p>
                     </div>
                     <Button variant="outline" asChild>
-                      <Link href={`/dashboard/student/results/${result.id}`}>
+                      <Link href={`/dashboard/student/tests/${result.id}/result`}>
                         <Eye className="h-4 w-4 mr-2" />
                         Xem chi tiết
                       </Link>
@@ -260,6 +285,58 @@ export default function StudentResultsPage() {
           )
         })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Trang {currentPage} / {totalPages} ({filteredResults.length} kết quả)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNum: number
+              if (totalPages <= 5) {
+                pageNum = i + 1
+              } else if (currentPage <= 3) {
+                pageNum = i + 1
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i
+              } else {
+                pageNum = currentPage - 2 + i
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              )
+            })}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

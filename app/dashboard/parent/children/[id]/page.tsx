@@ -18,19 +18,22 @@ import {
   Clock,
   Phone,
   Video,
+  AlertCircle
 } from "lucide-react"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "@/store"
 import { fetchChildDetailsRequest } from "@/store/slices/users-slice"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ChildDetailPage() {
   const router = useRouter()
   const params = useParams()
   const dispatch = useDispatch()
   const { id } = params
+  const { toast } = useToast()
 
   const { childDetails, isLoading } = useSelector((state: RootState) => state.users)
   const childData = id ? childDetails[id as string] : null
@@ -55,7 +58,7 @@ export default function ChildDetailPage() {
     email: "email@example.com", // Mock for now
   }
 
-  const mockClasses = childData.classes?.map(c => ({
+  const mockClasses = childData.classes?.map((c: any) => ({
     id: c.id,
     subject: c.subject,
     tutor: { name: c.tutor, phone: "N/A", rating: 5.0 },
@@ -67,7 +70,7 @@ export default function ChildDetailPage() {
     monthlyFee: 0 // Not in ParentChildDetail
   })) || []
 
-  const mockResults = childData.recentResults?.map(r => ({
+  const mockResults = childData.recentResults?.map((r: any) => ({
     id: r.id,
     test: r.test,
     score: r.score,
@@ -75,22 +78,51 @@ export default function ChildDetailPage() {
     date: r.date
   })) || []
 
-  // Using upcoming classes as mock sessions for now or just generic
-  const mockSessions = childData.upcomingClasses?.map((c, index) => ({
-    id: `s-${index}`,
-    date: c.date,
-    subject: c.subject,
-    time: c.time,
-    status: "scheduled",
-    attended: null
-  })) || []
+  const [localSessions, setLocalSessions] = useState<any[]>([])
+
+  useEffect(() => {
+    if (childData) {
+      setLocalSessions([
+        {
+          id: "pending-confirm-test",
+          date: "Hôm nay",
+          subject: "Toán học",
+          time: "18:00 - 19:30",
+          status: "pending_confirmation",
+          attended: null
+        },
+        ...(childData.upcomingClasses?.map((c: any, index: any) => ({
+          id: `s-${index}`,
+          date: c.date,
+          subject: c.subject,
+          time: c.time,
+          status: "scheduled",
+          attended: null
+        })) || [])
+      ])
+    }
+  }, [childData])
+
+  const handleConfirmAttendance = (sessionId: string) => {
+    setLocalSessions(prev =>
+      prev.map(s => s.id === sessionId ? { ...s, status: "completed", attended: true } : s)
+    )
+    toast({ title: "Đã xác nhận", description: "Cảm ơn phụ huynh đã xác nhận điểm danh." })
+  }
+
+  const handleReportDiscrepancy = (sessionId: string) => {
+    setLocalSessions(prev =>
+      prev.map(s => s.id === sessionId ? { ...s, status: "reported" } : s)
+    )
+    toast({ title: "Đã báo cáo văn phòng", description: "Văn phòng sẽ liên hệ để xác minh buổi học này.", variant: "destructive" })
+  }
 
   const totalFee = 0 // Data not available yet
   const avgAttendance = mockClasses.length > 0
-    ? mockClasses.reduce((sum, c) => sum + c.attendance, 0) / mockClasses.length
+    ? mockClasses.reduce((sum: any, c: any) => sum + c.attendance, 0) / mockClasses.length
     : 0
   const avgScore = mockResults.length > 0
-    ? mockResults.reduce((sum, r) => sum + (r.score / r.total) * 100, 0) / mockResults.length
+    ? mockResults.reduce((sum: any, r: any) => sum + (r.score / r.total) * 100, 0) / mockResults.length
     : 0
 
   const formatCurrency = (amount: number) => {
@@ -175,7 +207,7 @@ export default function ChildDetailPage() {
         </TabsList>
 
         <TabsContent value="classes" className="space-y-4">
-          {mockClasses.map((cls) => (
+          {mockClasses.map((cls: any) => (
             <Card key={cls.id}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between mb-4">
@@ -246,7 +278,7 @@ export default function ChildDetailPage() {
               <CardTitle>Lịch sử buổi học</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockSessions.map((session) => (
+              {localSessions.map((session: any) => (
                 <div
                   key={session.id}
                   className={`flex items-center justify-between p-4 rounded-lg border ${session.status === "scheduled" ? "border-primary/30 bg-primary/5" : ""
@@ -256,13 +288,21 @@ export default function ChildDetailPage() {
                     <div
                       className={`h-10 w-10 rounded-lg flex items-center justify-center ${session.status === "scheduled"
                         ? "bg-blue-100"
-                        : session.attended
-                          ? "bg-green-100"
-                          : "bg-red-100"
+                        : session.status === "pending_confirmation"
+                          ? "bg-amber-100"
+                          : session.status === "reported"
+                            ? "bg-gray-100"
+                            : session.attended
+                              ? "bg-green-100"
+                              : "bg-red-100"
                         }`}
                     >
                       {session.status === "scheduled" ? (
                         <Clock className="h-5 w-5 text-blue-600" />
+                      ) : session.status === "pending_confirmation" ? (
+                        <AlertCircle className="h-5 w-5 text-amber-600" />
+                      ) : session.status === "reported" ? (
+                        <AlertCircle className="h-5 w-5 text-gray-600" />
                       ) : session.attended ? (
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       ) : (
@@ -276,11 +316,34 @@ export default function ChildDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge
-                    variant={session.status === "scheduled" ? "outline" : session.attended ? "default" : "destructive"}
-                  >
-                    {session.status === "scheduled" ? "Sắp tới" : session.attended ? "Đã học" : "Vắng"}
-                  </Badge>
+
+                  <div className="flex items-center gap-2">
+                    {session.status === "pending_confirmation" ? (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleConfirmAttendance(session.id)}
+                        >
+                          Xác nhận
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleReportDiscrepancy(session.id)}
+                        >
+                          Báo sai
+                        </Button>
+                      </div>
+                    ) : session.status === "reported" ? (
+                      <Badge variant="secondary">Đã báo sự cố</Badge>
+                    ) : (
+                      <Badge
+                        variant={session.status === "scheduled" ? "outline" : session.attended ? "default" : "destructive"}
+                      >
+                        {session.status === "scheduled" ? "Sắp tới" : session.attended ? "Đã học" : "Vắng"}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -293,7 +356,7 @@ export default function ChildDetailPage() {
               <CardTitle>Kết quả kiểm tra</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockResults.map((result) => {
+              {mockResults.map((result: any) => {
                 const percentage = (result.score / result.total) * 100
                 return (
                   <div key={result.id} className="flex items-center justify-between p-4 rounded-lg border">

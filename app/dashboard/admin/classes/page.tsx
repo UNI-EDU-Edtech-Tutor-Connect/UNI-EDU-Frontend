@@ -81,15 +81,6 @@ export default function ClassesPage() {
       header: "Ngày tạo",
       render: (item: ClassRequest) => <span>{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>,
     },
-    {
-      key: "actions",
-      header: "",
-      render: () => (
-        <Button variant="outline" size="sm">
-          Chi tiết
-        </Button>
-      ),
-    },
   ]
 
   return (
@@ -100,7 +91,6 @@ export default function ClassesPage() {
           <h1 className="text-2xl font-bold text-foreground">Quản lý lớp học</h1>
           <p className="text-muted-foreground">Theo dõi và quản lý tất cả lớp học trong hệ thống</p>
         </div>
-        <Button>Tạo lớp mới</Button>
       </div>
 
       {/* Stats */}

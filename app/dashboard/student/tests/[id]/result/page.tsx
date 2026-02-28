@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Trophy, Target, Clock, CheckCircle, XCircle, Home, RotateCcw, FileText } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function TestResultPage() {
   const params = useParams()
   const router = useRouter()
+  const { toast } = useToast()
 
   // Mock result data
   const result = {
@@ -39,9 +41,8 @@ export default function TestResultPage() {
         <CardContent className="pt-6">
           <div className="text-center">
             <div
-              className={`inline-flex items-center justify-center h-24 w-24 rounded-full mb-4 ${
-                result.passed ? "bg-green-100" : "bg-red-100"
-              }`}
+              className={`inline-flex items-center justify-center h-24 w-24 rounded-full mb-4 ${result.passed ? "bg-green-100" : "bg-red-100"
+                }`}
             >
               {result.passed ? (
                 <Trophy className="h-12 w-12 text-green-600" />
@@ -155,11 +156,9 @@ export default function TestResultPage() {
       </Card>
 
       <div className="flex flex-col sm:flex-row gap-4">
-        <Button asChild className="flex-1">
-          <Link href={`/dashboard/student/tests/${params.id}/review`}>
-            <FileText className="h-4 w-4 mr-2" />
-            Xem lại bài làm
-          </Link>
+        <Button className="flex-1" onClick={() => toast({ title: "Đang tải", description: "Tính năng Xem lại bài làm đang được cập nhật!" })}>
+          <FileText className="h-4 w-4 mr-2" />
+          Xem lại bài làm
         </Button>
         <Button variant="outline" asChild className="flex-1 bg-transparent">
           <Link href="/dashboard/student/tests">

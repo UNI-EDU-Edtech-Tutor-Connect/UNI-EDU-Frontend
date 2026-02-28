@@ -20,11 +20,13 @@ import {
   Printer,
   Mail,
 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ReportsPage() {
   const dispatch = useDispatch()
   const { accountantStats, isLoading } = useSelector((state: RootState) => state.stats)
   const [period, setPeriod] = useState("month")
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchAccountantStatsRequest())
@@ -68,15 +70,15 @@ export default function ReportsPage() {
               <SelectItem value="year">Năm nay</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => toast({ title: "Thông báo", description: "Tính năng gửi báo cáo đang được cập nhật." })}>
             <Mail className="mr-2 h-4 w-4" />
             Gửi báo cáo
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => toast({ title: "Đang xử lý", description: "Báo cáo đang được chuẩn bị để in..." })}>
             <Printer className="mr-2 h-4 w-4" />
             In báo cáo
           </Button>
-          <Button>
+          <Button onClick={() => toast({ title: "Xuất dữ liệu", description: "Báo cáo PDF đang được tải xuống..." })}>
             <Download className="mr-2 h-4 w-4" />
             Xuất PDF
           </Button>

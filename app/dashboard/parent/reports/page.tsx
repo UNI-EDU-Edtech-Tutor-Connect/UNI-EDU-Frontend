@@ -13,6 +13,26 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BarChart3, TrendingUp, Calendar, BookOpen, Download, Star, Clock, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from "recharts"
+
+const progressData = [
+  { month: "T9", math: 6.5, physics: 7.0, english: 5.5, target: 8.0 },
+  { month: "T10", math: 7.0, physics: 7.2, english: 6.0, target: 8.0 },
+  { month: "T11", math: 7.5, physics: 7.5, english: 6.5, target: 8.0 },
+  { month: "T12", math: 8.2, physics: 8.0, english: 7.2, target: 8.0 },
+  { month: "T1", math: 8.5, physics: 8.4, english: 7.5, target: 8.0 },
+  { month: "T2", math: 8.8, physics: 8.5, english: 8.0, target: 8.0 },
+]
 
 export default function ParentReportsPage() {
   const dispatch = useAppDispatch()
@@ -22,6 +42,8 @@ export default function ParentReportsPage() {
 
   const [selectedChild, setSelectedChild] = useState<string>("")
   const [selectedPeriod, setSelectedPeriod] = useState("month")
+  const [subject, setSubject] = useState("all")
+  const { toast } = useToast()
 
   useEffect(() => {
     if (user?.id) {
@@ -124,7 +146,7 @@ export default function ParentReportsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Báo cáo học tập</h1>
           <p className="text-muted-foreground">Theo dõi tiến độ và kết quả chi tiết của {currentChild.name}</p>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Xuất báo cáo", description: "Báo cáo PDF đang được tải xuống..." })}>
           <Download className="h-4 w-4" />
           Xuất báo cáo PDF
         </Button>
@@ -221,6 +243,90 @@ export default function ParentReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Biểu Đồ Phát Triển Mới (Line Chart) */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle>Biểu Đồ Phát Triển</CardTitle>
+              <CardDescription>Tiến bộ điểm trung bình theo thời gian (Chi tiết môn học)</CardDescription>
+            </div>
+            <Select defaultValue={subject} onValueChange={setSubject}>
+              <SelectTrigger className="w-[180px] bg-background">
+                <SelectValue placeholder="Chọn môn học" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả môn</SelectItem>
+                <SelectItem value="math">Toán học</SelectItem>
+                <SelectItem value="physics">Vật lý</SelectItem>
+                <SelectItem value="english">Tiếng Anh</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={progressData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} domain={[0, 10]} dx={-10} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+
+                {/* Target Line */}
+                <Line
+                  type="stepAfter"
+                  name="Mục tiêu"
+                  dataKey="target"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+
+                {/* Curves */}
+                {(subject === "all" || subject === "math") && (
+                  <Line
+                    type="monotone"
+                    name="Toán Học"
+                    dataKey="math"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                )}
+                {(subject === "all" || subject === "physics") && (
+                  <Line
+                    type="monotone"
+                    name="Vật Lý"
+                    dataKey="physics"
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                )}
+                {(subject === "all" || subject === "english") && (
+                  <Line
+                    type="monotone"
+                    name="Tiếng Anh"
+                    dataKey="english"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Child Profile & Detailed Stats */}
       <div className="grid gap-6 md:grid-cols-[300px_1fr]">

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { BookOpen, Users, Wallet, Star, Calendar, Clock, ArrowRight, TrendingUp } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
@@ -22,6 +23,7 @@ export default function TutorDashboard() {
   const { user } = useAppSelector((state) => state.auth)
   const { classRequests, sessions } = useAppSelector((state) => state.classes)
   const { tutorStats, isLoading: statsLoading } = useAppSelector((state) => state.stats)
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchClassesRequest())
@@ -132,7 +134,7 @@ export default function TutorDashboard() {
                         })}
                       </p>
                     </div>
-                    <Button size="sm">Vào lớp</Button>
+                    <Button size="sm" onClick={() => toast({ title: "Đang vào lớp...", description: "Hệ thống đang kết nối đến phòng học ảo." })}>Vào lớp</Button>
                   </div>
                 )
               })

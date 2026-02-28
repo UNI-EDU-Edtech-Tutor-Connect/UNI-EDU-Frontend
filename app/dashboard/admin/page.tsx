@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/dashboard/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, GraduationCap, BookOpen, CreditCard, TrendingUp, UserCheck, Clock } from "lucide-react"
+import { BarChart, Bar, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from "recharts"
 import type { TutorProfile, TeacherProfile } from "@/types"
 import Link from "next/link"
 
@@ -82,8 +83,10 @@ export default function AdminDashboard() {
       key: "actions",
       header: "",
       render: () => (
-        <Button variant="outline" size="sm">
-          Xem chi tiết
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/dashboard/admin/approvals">
+            Xem chi tiết
+          </Link>
         </Button>
       ),
     },
@@ -144,26 +147,51 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-            <div>
+        <Card className="flex flex-col">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Bài test tháng này</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 pb-2 flex flex-col justify-end">
+            <div className="flex items-baseline gap-2 mb-2">
               <p className="text-2xl font-bold text-foreground">{stats.monthlyTests.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">Bài test tháng này</p>
+              <p className="text-xs text-muted-foreground flex items-center"><TrendingUp className="h-3 w-3 mr-1" />+12%</p>
+            </div>
+            <div className="h-[50px] w-full mt-auto">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[{ name: '1', val: 120 }, { name: '2', val: 200 }, { name: '3', val: 150 }, { name: '4', val: 250 }, { name: '5', val: stats.monthlyTests }]}>
+                  <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ fontSize: '12px', padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))' }} labelStyle={{ display: 'none' }} />
+                  <Bar dataKey="val" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10 text-success">
-              <Clock className="h-6 w-6" />
+        <Card className="flex flex-col">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Thời gian phê duyệt TB</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 pb-2 flex items-center justify-between">
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-bold text-foreground">48h</p>
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>Trung bình</span>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">48h</p>
-              <p className="text-sm text-muted-foreground">Thời gian phê duyệt TB</p>
+            <div className="h-[70px] w-[70px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip contentStyle={{ fontSize: '12px', padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))' }} />
+                  <Pie data={[{ name: '< 24h', value: 45 }, { name: '24h-48h', value: 35 }, { name: '> 48h', value: 20 }]} cx="50%" cy="50%" innerRadius={20} outerRadius={32} dataKey="value" stroke="none">
+                    <Cell fill="hsl(var(--success))" />
+                    <Cell fill="hsl(var(--warning))" />
+                    <Cell fill="hsl(var(--destructive))" />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -188,8 +216,11 @@ export default function AdminDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Classes */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">Lớp học mới</CardTitle>
+            <Button variant="ghost" size="sm" asChild className="text-sm font-normal text-muted-foreground">
+              <Link href="/dashboard/admin/classes">Xem tất cả</Link>
+            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {classRequests.slice(0, 5).map((classItem) => (
@@ -213,8 +244,11 @@ export default function AdminDashboard() {
 
         {/* Recent Transactions */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">Giao dịch gần đây</CardTitle>
+            <Button variant="ghost" size="sm" asChild className="text-sm font-normal text-muted-foreground">
+              <Link href="/dashboard/admin/transactions">Xem tất cả</Link>
+            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {transactions.slice(0, 5).map((txn) => (

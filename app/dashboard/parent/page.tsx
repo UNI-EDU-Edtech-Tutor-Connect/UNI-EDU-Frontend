@@ -10,9 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Users, CreditCard, Star, MessageCircle, ArrowRight, Bell } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ParentDashboard() {
   const dispatch = useAppDispatch()
+  const { toast } = useToast()
   const { user } = useAppSelector((state) => state.auth)
   const { parentChildren, isLoading: loadingChildren } = useAppSelector((state) => state.users)
   const { transactions, isLoading: loadingTransactions } = useAppSelector((state) => state.transactions)
@@ -106,10 +108,8 @@ export default function ParentDashboard() {
                 <div className="text-center py-4 text-muted-foreground">Không có thông báo mới</div>
               )}
             </div>
-            <Button variant="ghost" className="w-full mt-4" asChild>
-              <Link href="/dashboard/parent/notifications">
-                Xem tất cả <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+            <Button variant="ghost" className="w-full mt-4" onClick={() => toast({ title: "Thông báo", description: "Tính năng này đang được phát triển" })}>
+              Xem tất cả <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
@@ -119,23 +119,21 @@ export default function ParentDashboard() {
             <CardTitle>Hành động nhanh</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button className="w-full justify-start" variant="outline" asChild>
-              <Link href="/dashboard/parent/find-tutor">
-                <Users className="h-4 w-4 mr-2" />
-                Tìm gia sư mới
-              </Link>
+            <Button className="w-full justify-start" variant="outline" onClick={() => toast({ title: "Thông báo", description: "Tính năng này đang được phát triển" })}>
+              <Users className="h-4 w-4 mr-2" />
+              Tìm gia sư mới
             </Button>
             <Button className="w-full justify-start" variant="outline" asChild>
-              <Link href="/dashboard/parent/payments/new">
+              <Link href="/dashboard/parent/payments">
                 <CreditCard className="h-4 w-4 mr-2" />
                 Thanh toán học phí
               </Link>
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => toast({ title: "Thông báo", description: "Tính năng này đang được phát triển" })}>
               <Star className="h-4 w-4 mr-2" />
               Đánh giá gia sư
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" onClick={() => toast({ title: "Thông báo", description: "Tính năng này đang được phát triển" })}>
               <MessageCircle className="h-4 w-4 mr-2" />
               Hỗ trợ
             </Button>

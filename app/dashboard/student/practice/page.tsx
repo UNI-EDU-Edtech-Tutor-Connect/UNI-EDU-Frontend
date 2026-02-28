@@ -1,13 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { FileCheck, Clock, Target, Search, Play, Trophy, TrendingUp, BookOpen } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { FileCheck, Clock, Target, Search, Play, Trophy, TrendingUp, BookOpen, ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 
 import { useDispatch, useSelector } from "react-redux"
@@ -15,6 +22,8 @@ import type { RootState } from "@/store"
 import { fetchPracticeTestsRequest } from "@/store/slices/student-slice"
 import { fetchCompletedTestsRequest } from "@/store/slices/tests-slice"
 import { useEffect } from "react"
+
+const ITEMS_PER_PAGE = 6
 
 export default function StudentPracticePage() {
   const dispatch = useDispatch()
@@ -25,6 +34,10 @@ export default function StudentPracticePage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [difficultyFilter, setDifficultyFilter] = useState("all")
+  const [testsPage, setTestsPage] = useState(1)
+  const [attemptsPage, setAttemptsPage] = useState(1)
+  const [selectedAttempt, setSelectedAttempt] = useState<any>(null)
+  const [showAttemptDialog, setShowAttemptDialog] = useState(false)
 
   useEffect(() => {
     dispatch(fetchPracticeTestsRequest())
@@ -33,14 +46,36 @@ export default function StudentPracticePage() {
     }
   }, [dispatch, user?.id])
 
-  const myAttempts = completedTests || []
+  const myAttempts = useMemo(() => {
+    const items = completedTests || []
+    // Sort newest first
+    return [...items].sort((a, b) => {
+      const dateA = new Date(a.completedAt).getTime()
+      const dateB = new Date(b.completedAt).getTime()
+      if (isNaN(dateA) || isNaN(dateB)) return 0
+      return dateB - dateA
+    })
+  }, [completedTests])
 
-  const filteredTests = (practiceTests || []).filter((test) => {
-    const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesSubject = subjectFilter === "all" || test.subjectName === subjectFilter // Simplified
-    const matchesDifficulty = difficultyFilter === "all" || (test as any).difficulty === difficultyFilter
-    return matchesSearch && matchesDifficulty // Removed subject filter logic for now as simplified above
-  })
+  const filteredTests = useMemo(() => {
+    return (practiceTests || []).filter((test) => {
+      const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesSubject = subjectFilter === "all" || test.subjectName === subjectFilter
+      const matchesDifficulty = difficultyFilter === "all" || (test as any).difficulty === difficultyFilter
+      return matchesSearch && matchesDifficulty && matchesSubject
+    })
+  }, [practiceTests, searchTerm, subjectFilter, difficultyFilter])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setTestsPage(1)
+  }, [searchTerm, subjectFilter, difficultyFilter])
+
+  const testsTotalPages = Math.ceil(filteredTests.length / ITEMS_PER_PAGE)
+  const paginatedTests = filteredTests.slice((testsPage - 1) * ITEMS_PER_PAGE, testsPage * ITEMS_PER_PAGE)
+
+  const attemptsTotalPages = Math.ceil(myAttempts.length / ITEMS_PER_PAGE)
+  const paginatedAttempts = myAttempts.slice((attemptsPage - 1) * ITEMS_PER_PAGE, attemptsPage * ITEMS_PER_PAGE)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -65,21 +100,6 @@ export default function StudentPracticePage() {
         return "Khó"
       default:
         return difficulty
-    }
-  }
-
-  const getSubjectLabel = (subject: string) => {
-    switch (subject) {
-      case "math":
-        return "Toán"
-      case "english":
-        return "Tiếng Anh"
-      case "physics":
-        return "Vật lý"
-      case "chemistry":
-        return "Hóa học"
-      default:
-        return subject
     }
   }
 
@@ -149,49 +169,82 @@ export default function StudentPracticePage() {
       </div>
 
       {/* My Recent Attempts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lần thi gần đây</CardTitle>
-          <CardDescription>Kết quả các bài thi thử bạn đã làm</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {myAttempts.map((attempt) => (
-              <div key={attempt.id} className="flex items-center justify-between p-4 rounded-lg border">
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`h-10 w-10 rounded-lg flex items-center justify-center ${attempt.score >= 80 ? "bg-green-100" : attempt.score >= 60 ? "bg-yellow-100" : "bg-red-100"
-                      }`}
-                  >
-                    <Trophy
-                      className={`h-5 w-5 ${attempt.score >= 80
-                        ? "text-green-600"
-                        : attempt.score >= 60
-                          ? "text-yellow-600"
-                          : "text-red-600"
+      {myAttempts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Lần thi gần đây</CardTitle>
+            <CardDescription>Kết quả các bài thi thử bạn đã làm</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {paginatedAttempts.map((attempt) => (
+                <div key={attempt.id} className="flex items-center justify-between p-4 rounded-lg border">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`h-10 w-10 rounded-lg flex items-center justify-center ${attempt.score >= 80 ? "bg-green-100" : attempt.score >= 60 ? "bg-yellow-100" : "bg-red-100"
                         }`}
-                    />
+                    >
+                      <Trophy
+                        className={`h-5 w-5 ${attempt.score >= 80
+                          ? "text-green-600"
+                          : attempt.score >= 60
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                          }`}
+                      />
+                    </div>
+                    <div>
+                      <p className="font-medium">{attempt.className}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(attempt.completedAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">{attempt.className}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(attempt.completedAt).toLocaleDateString()}
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-primary">{attempt.score}%</p>
+                    </div>
+                    <Button variant="outline" onClick={() => {
+                      setSelectedAttempt(attempt)
+                      setShowAttemptDialog(true)
+                    }}>
+                      Xem lại
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary">{attempt.score}%</p>
-                  </div>
-                  <Button variant="outline" asChild>
-                    <Link href={`/dashboard/student/results`}>Xem lại</Link>
+              ))}
+            </div>
+            {/* Attempts Pagination */}
+            {attemptsTotalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Trang {attemptsPage} / {attemptsTotalPages} ({myAttempts.length} kết quả)
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={attemptsPage === 1}
+                    onClick={() => setAttemptsPage(attemptsPage - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={attemptsPage === attemptsTotalPages}
+                    onClick={() => setAttemptsPage(attemptsPage + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -229,9 +282,9 @@ export default function StudentPracticePage() {
         </Select>
       </div>
 
-      {/* Practice Tests */}
+      {/* Practice Tests - with pagination */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredTests.map((test) => (
+        {paginatedTests.map((test) => (
           <Card key={test.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -266,7 +319,7 @@ export default function StudentPracticePage() {
               </div>
 
               <Button className="w-full" asChild>
-                <Link href={`/dashboard/student/practice/${test.id}/start`}>
+                <Link href={`/dashboard/student/tests/${test.id}/start`}>
                   <Play className="h-4 w-4 mr-2" />
                   Bắt đầu thi
                 </Link>
@@ -275,6 +328,133 @@ export default function StudentPracticePage() {
           </Card>
         ))}
       </div>
+
+      {/* Tests Grid Pagination */}
+      {testsTotalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Trang {testsPage} / {testsTotalPages} ({filteredTests.length} đề thi)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={testsPage === 1}
+              onClick={() => setTestsPage(testsPage - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: Math.min(testsTotalPages, 5) }, (_, i) => {
+              let pageNum: number
+              if (testsTotalPages <= 5) {
+                pageNum = i + 1
+              } else if (testsPage <= 3) {
+                pageNum = i + 1
+              } else if (testsPage >= testsTotalPages - 2) {
+                pageNum = testsTotalPages - 4 + i
+              } else {
+                pageNum = testsPage - 2 + i
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={testsPage === pageNum ? "default" : "outline"}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setTestsPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              )
+            })}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={testsPage === testsTotalPages}
+              onClick={() => setTestsPage(testsPage + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {filteredTests.length === 0 && (
+        <div className="text-center py-12">
+          <FileCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Không tìm thấy đề thi</h3>
+          <p className="text-muted-foreground">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+        </div>
+      )}
+
+      {/* Attempt Details Dialog */}
+      <Dialog open={showAttemptDialog} onOpenChange={setShowAttemptDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chi tiết bài thi</DialogTitle>
+            <DialogDescription>
+              Kết quả của bài thi thử "{selectedAttempt?.className || selectedAttempt?.title}"
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAttempt && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center justify-center p-6 bg-muted/30 rounded-lg">
+                <div className="text-center">
+                  <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-3 ${selectedAttempt.score >= 80 ? 'bg-green-100' : selectedAttempt.score >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
+                    <Trophy className={`h-8 w-8 ${selectedAttempt.score >= 80 ? 'text-green-600' : selectedAttempt.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`} />
+                  </div>
+                  <h3 className="text-3xl font-bold">{selectedAttempt.score}%</h3>
+                  <p className="text-sm text-muted-foreground">Điểm số</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2 p-3 border rounded-lg">
+                  <Clock className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Thời gian</p>
+                    <p className="font-medium text-sm">32:45 / 45:00</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 p-3 border rounded-lg">
+                  <Target className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Điểm đạt</p>
+                    <p className="font-medium text-sm">60% yêu cầu</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 p-3 border rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Câu đúng</p>
+                    <p className="font-medium text-sm">32 câu</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 p-3 border rounded-lg">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Câu sai</p>
+                    <p className="font-medium text-sm">8 câu</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowAttemptDialog(false)}>
+                  Đóng
+                </Button>
+                <Button className="flex-1" asChild>
+                  <Link href={`/dashboard/student/tests/${selectedAttempt.id}/result`}>
+                    Xem phân tích
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

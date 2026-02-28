@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Clock, Video, MapPin, Users, ChevronLeft, ChevronRight } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 const dayNames = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"]
 const shortDayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
@@ -64,6 +65,7 @@ const mockSchedule = [
 
 export default function TeacherSchedulePage() {
   const [currentWeek, setCurrentWeek] = useState(0)
+  const { toast } = useToast()
 
   const getWeekDates = (weekOffset: number) => {
     const today = new Date()
@@ -183,11 +185,10 @@ export default function TeacherSchedulePage() {
                     {daySchedule.map((schedule) => (
                       <div
                         key={schedule.id}
-                        className={`p-2 rounded-lg text-xs ${
-                          schedule.type === "online"
+                        className={`p-2 rounded-lg text-xs ${schedule.type === "online"
                             ? "bg-blue-100 border border-blue-200"
                             : "bg-green-100 border border-green-200"
-                        }`}
+                          }`}
                       >
                         <p className="font-medium truncate">{schedule.subject}</p>
                         <p className="text-muted-foreground">{schedule.startTime}</p>
@@ -216,9 +217,8 @@ export default function TeacherSchedulePage() {
                 <div key={schedule.id} className="flex items-center justify-between p-4 rounded-lg border">
                   <div className="flex items-center gap-4">
                     <div
-                      className={`h-12 w-12 rounded-lg flex items-center justify-center ${
-                        schedule.type === "online" ? "bg-blue-100" : "bg-green-100"
-                      }`}
+                      className={`h-12 w-12 rounded-lg flex items-center justify-center ${schedule.type === "online" ? "bg-blue-100" : "bg-green-100"
+                        }`}
                     >
                       {schedule.type === "online" ? (
                         <Video className="h-6 w-6 text-blue-600" />
@@ -240,7 +240,7 @@ export default function TeacherSchedulePage() {
                         {schedule.type === "online" ? "Online" : "Tại nhà"}
                       </Badge>
                     </div>
-                    <Button>Vào lớp</Button>
+                    <Button onClick={() => toast({ title: "Đang vào lớp...", description: "Hệ thống đang kết nối đến phòng học ảo." })}>Vào lớp</Button>
                   </div>
                 </div>
               ))}

@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { BookOpen, Users, Wallet, Star, Calendar, Clock, Award } from "lucide-react"
+import { BookOpen, Users, Wallet, Star, Calendar, Clock, Award, TrendingUp } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
@@ -21,6 +22,7 @@ export default function TeacherDashboard() {
   const { user } = useAppSelector((state) => state.auth)
   const { classRequests, sessions } = useAppSelector((state) => state.classes)
   const { tutorStats, isLoading: statsLoading } = useAppSelector((state) => state.stats)
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchClassesRequest())
@@ -93,7 +95,7 @@ export default function TeacherDashboard() {
         {/* Upcoming Sessions */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Lịch dạy hôm nay</CardTitle>
+            <CardTitle className="text-lg">Lịch dạy sắp tới</CardTitle>
             <Link href="/dashboard/teacher/schedule">
               <Button variant="outline" size="sm">
                 Xem tất cả
@@ -104,7 +106,7 @@ export default function TeacherDashboard() {
             {upcomingSessions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Không có lịch dạy hôm nay</p>
+                <p>Chưa có lịch dạy</p>
               </div>
             ) : (
               upcomingSessions.map((session) => {
@@ -124,16 +126,16 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
+                      <p className="font-medium">{new Date(session.scheduledAt).toLocaleDateString("vi-VN")}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
                         {new Date(session.scheduledAt).toLocaleTimeString("vi-VN", {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                       </p>
-                      <p className="text-sm text-muted-foreground">{session.duration} phút</p>
                     </div>
-                    <Button size="sm">Vào lớp</Button>
+                    <Button size="sm" onClick={() => toast({ title: "Đang vào lớp...", description: "Hệ thống đang kết nối đến phòng học ảo." })}>Vào lớp</Button>
                   </div>
                 )
               })
@@ -141,34 +143,37 @@ export default function TeacherDashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Stats */}
+        {/* Monthly Progress */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Thống kê tháng</CardTitle>
+            <CardTitle className="text-lg">Tiến độ tháng này</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Buổi đã dạy</span>
-                <span className="font-medium">{stats.completedSessions} buổi</span>
+                <span className="font-medium">
+                  {stats.completedSessions}/{stats.completedSessions + stats.upcomingSessions}
+                </span>
               </div>
-              <Progress value={85} />
+              <Progress value={(stats.completedSessions / (stats.completedSessions + stats.upcomingSessions || 1)) * 100} />
             </div>
 
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tỷ lệ hoàn thành</span>
-                <span className="font-medium text-success">98%</span>
+                <span className="text-muted-foreground">Thu nhập</span>
+                <span className="font-medium">{formatCurrency(stats.monthlyEarnings)}</span>
               </div>
-              <Progress value={98} className="bg-success/20" />
+              <Progress value={75} className="bg-success/20" />
+              <p className="text-xs text-muted-foreground">75% so với mục tiêu</p>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Học sinh đạt target</span>
-                <span className="font-medium">90%</span>
+            <div className="pt-4 border-t">
+              <div className="flex items-center gap-2 text-sm">
+                <TrendingUp className="h-4 w-4 text-success" />
+                <span className="text-success font-medium">+15%</span>
+                <span className="text-muted-foreground">so với tháng trước</span>
               </div>
-              <Progress value={90} />
             </div>
           </CardContent>
         </Card>

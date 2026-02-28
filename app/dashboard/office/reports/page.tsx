@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { startOfWeek, endOfWeek, subWeeks, isWithinInterval, parseISO } from "date-fns"
 import { vi } from "date-fns/locale"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ReportsPage() {
   const dispatch = useAppDispatch()
@@ -34,6 +35,7 @@ export default function ReportsPage() {
   const { tutors, teachers, students, parents } = useAppSelector((state) => state.users)
   const { staffPerformance, sourceBreakdown } = useAppSelector((state) => state.office)
   const [period, setPeriod] = useState("month")
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchOfficeStatsRequest())
@@ -105,7 +107,7 @@ export default function ReportsPage() {
               <SelectItem value="year">Năm nay</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => toast({ title: "Đang xử lý", description: "Hệ thống đang xuất báo cáo tổng hợp..." })}>
             <Download className="mr-2 h-4 w-4" />
             Xuất báo cáo
           </Button>
@@ -290,19 +292,19 @@ export default function ReportsPage() {
                 <CardDescription>Tải xuống các báo cáo thường dùng</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start bg-transparent">
+                <Button variant="outline" className="w-full justify-start bg-transparent" onClick={() => toast({ title: "Tải báo cáo", description: "Đang tải Báo cáo đăng ký tuần PDF..." })}>
                   <FileText className="mr-2 h-4 w-4" />
                   Báo cáo đăng ký tuần
                 </Button>
-                <Button variant="outline" className="w-full justify-start bg-transparent">
+                <Button variant="outline" className="w-full justify-start bg-transparent" onClick={() => toast({ title: "Tải báo cáo", description: "Đang tải Báo cáo ghép lớp PDF..." })}>
                   <FileText className="mr-2 h-4 w-4" />
                   Báo cáo ghép lớp
                 </Button>
-                <Button variant="outline" className="w-full justify-start bg-transparent">
+                <Button variant="outline" className="w-full justify-start bg-transparent" onClick={() => toast({ title: "Tải báo cáo", description: "Đang tải Báo cáo yêu cầu hỗ trợ PDF..." })}>
                   <FileText className="mr-2 h-4 w-4" />
                   Báo cáo yêu cầu hỗ trợ
                 </Button>
-                <Button variant="outline" className="w-full justify-start bg-transparent">
+                <Button variant="outline" className="w-full justify-start bg-transparent" onClick={() => toast({ title: "Tải báo cáo", description: "Đang tải Báo cáo hiệu suất nhân viên PDF..." })}>
                   <FileText className="mr-2 h-4 w-4" />
                   Báo cáo hiệu suất nhân viên
                 </Button>

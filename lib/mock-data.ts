@@ -440,6 +440,24 @@ export const mockClassSessions: ClassSession[] = [
     duration: 120,
     status: "scheduled",
   },
+  {
+    id: "session-005",
+    classId: "class-001",
+    tutorId: "tutor-001",
+    studentId: "student-001",
+    scheduledAt: "2024-12-18T18:00:00Z",
+    duration: 120,
+    status: "reported",
+  },
+  {
+    id: "session-004",
+    classId: "class-001",
+    tutorId: "tutor-001",
+    studentId: "student-001",
+    scheduledAt: "2024-12-19T18:00:00Z",
+    duration: 120,
+    status: "pending_confirmation",
+  },
 ]
 
 // ============================================

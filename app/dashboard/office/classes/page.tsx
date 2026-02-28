@@ -23,6 +23,7 @@ import { Search, Plus, BookOpen, Users, GraduationCap, Eye, Edit, Calendar, Cloc
 import Link from "next/link"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ClassesPage() {
   const dispatch = useAppDispatch()
@@ -31,6 +32,7 @@ export default function ClassesPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchClassesRequest())
@@ -197,7 +199,7 @@ export default function ClassesPage() {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Hủy
               </Button>
-              <Button onClick={() => setIsAddDialogOpen(false)}>Tạo lớp</Button>
+              <Button onClick={() => { setIsAddDialogOpen(false); toast({ title: "Thành công", description: "Lớp học đã được tạo thành công!" }) }}>Tạo lớp</Button>
             </div>
           </DialogContent>
         </Dialog>

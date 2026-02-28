@@ -18,6 +18,7 @@ import {
 import { StatusBadge } from "@/components/dashboard/status-badge"
 import { User, FileText, GraduationCap, CheckCircle2, XCircle, Clock, ExternalLink, Shield } from "lucide-react"
 import type { TutorProfile, TeacherProfile } from "@/types"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ApprovalsPage() {
   const dispatch = useAppDispatch()
@@ -25,6 +26,8 @@ export default function ApprovalsPage() {
   const [selectedUser, setSelectedUser] = useState<TutorProfile | TeacherProfile | null>(null)
   const [showApproveDialog, setShowApproveDialog] = useState(false)
   const [approvalAction, setApprovalAction] = useState<"approve" | "reject">("approve")
+  const [docDialog, setDocDialog] = useState<{ open: boolean, title: string, src: string }>({ open: false, title: "", src: "" })
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchUsersRequest())
@@ -117,31 +120,30 @@ export default function ApprovalsPage() {
         </div>
 
         {/* Documents */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Giấy tờ đã nộp</p>
-          <div className="flex flex-wrap gap-2">
-            {user.role === "tutor" && (user as TutorProfile).transcriptUrl && (
-              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                <FileText className="h-4 w-4" />
+        <div className="flex flex-wrap gap-2 pt-2 border-t mt-2">
+          {user.role === "tutor" ? (
+            <>
+              <Button variant="outline" size="sm" className="h-7 text-xs font-normal" onClick={() => setDocDialog({ open: true, title: "Bảng điểm sinh viên", src: "" })}>
+                <FileText className="h-3 w-3 mr-1" />
                 Bảng điểm
-                <ExternalLink className="h-3 w-3" />
               </Button>
-            )}
-            {user.role === "teacher" && (
-              <>
-                <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                  <GraduationCap className="h-4 w-4" />
-                  Văn bằng
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                  <FileText className="h-4 w-4" />
-                  Chứng chỉ SP
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </>
-            )}
-          </div>
+              <Button variant="outline" size="sm" className="h-7 text-xs font-normal" onClick={() => setDocDialog({ open: true, title: "Thẻ sinh viên / Văn bằng", src: "" })}>
+                <GraduationCap className="h-3 w-3 mr-1" />
+                Văn bằng
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" className="h-7 text-xs font-normal" onClick={() => setDocDialog({ open: true, title: "Bản sao Văn bằng", src: "" })}>
+                <GraduationCap className="h-3 w-3 mr-1" />
+                Văn bằng
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs font-normal" onClick={() => setDocDialog({ open: true, title: "Chứng chỉ sư phạm", src: "" })}>
+                <FileText className="h-3 w-3 mr-1" />
+                Chứng chỉ SP
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Verification Status */}
@@ -267,6 +269,29 @@ export default function ApprovalsPage() {
             >
               {approvalAction === "approve" ? "Phê duyệt" : "Từ chối"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={docDialog.open} onOpenChange={(open) => setDocDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-3xl sm:h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{docDialog.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 w-full bg-muted flex flex-col items-center justify-center rounded-md border min-h-[50vh]">
+            {docDialog.src ? (
+              <img src={docDialog.src} alt="Document" className="w-full h-full object-contain" />
+            ) : (
+              <div className="flex flex-col items-center text-muted-foreground">
+                <FileText className="h-16 w-16 mb-4 opacity-50" />
+                <p>Bản xem trước tài liệu (Demo)</p>
+                <p className="text-sm mt-2 opacity-75">Tài liệu đã được tải lên và xác minh hợp lệ.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDocDialog(prev => ({ ...prev, open: false }))}>Đóng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

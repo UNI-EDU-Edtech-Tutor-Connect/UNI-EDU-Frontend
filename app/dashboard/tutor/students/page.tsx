@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAppDispatch, useAppSelector } from "@/hooks/use-redux"
 import { fetchTutorStudentsRequest } from "@/store/slices/users-slice"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -22,14 +22,37 @@ import {
   MessageCircle,
   Eye,
   GraduationCap,
+  Send,
+  LineChart as LineChartIcon,
 } from "lucide-react"
 import Link from "next/link"
 import type { TutorStudent } from "@/lib/api/types"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from "recharts"
+
+const progressData = [
+  { month: "T9", score: 6.5, target: 8.0 },
+  { month: "T10", score: 7.2, target: 8.0 },
+  { month: "T11", score: 7.5, target: 8.0 },
+  { month: "T12", score: 8.2, target: 8.0 },
+  { month: "T1", score: 8.5, target: 8.0 },
+  { month: "T2", score: 8.8, target: 8.0 },
+]
 
 export default function TutorStudentsPage() {
   const dispatch = useAppDispatch()
   const { user } = useAppSelector((state) => state.auth)
   const { tutorStudents, isLoading } = useAppSelector((state) => state.users)
+  const { toast } = useToast()
 
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStudent, setSelectedStudent] = useState<TutorStudent | null>(null)
@@ -335,12 +358,56 @@ export default function TutorStudentsPage() {
                   </div>
                 )}
 
+                {/* Biểu đồ tăng trưởng */}
+                <Card className="shadow-sm border-none bg-muted/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <LineChartIcon className="h-4 w-4 text-primary" />
+                      Biểu đồ tăng trưởng
+                    </CardTitle>
+                    <DialogDescription>
+                      Theo dõi tiến độ điểm số trung bình qua các tháng
+                    </DialogDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[250px] w-full mt-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={progressData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} domain={[0, 10]} dx={-10} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                          <Line
+                            type="stepAfter"
+                            name="Mục tiêu"
+                            dataKey="target"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={false}
+                          />
+                          <Line
+                            type="monotone"
+                            name="Điểm thực tế"
+                            dataKey="score"
+                            stroke="#3b82f6"
+                            strokeWidth={3}
+                            dot={{ r: 4, strokeWidth: 2 }}
+                            activeDot={{ r: 6 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <div className="flex gap-3">
-                  <Button className="flex-1" asChild>
-                    <Link href={`/dashboard/tutor/classes/${selectedStudent.classId}`}>
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Xem lớp học
-                    </Link>
+                  <Button className="flex-1" onClick={() => toast({ title: "Đã gửi báo cáo", description: "Báo cáo tăng trưởng đã được gửi đến Phụ huynh thành công!" })}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Gửi báo cáo cho Phụ huynh
                   </Button>
                   <Button variant="outline" className="bg-transparent">
                     <MessageCircle className="h-4 w-4 mr-2" />

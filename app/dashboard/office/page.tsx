@@ -10,16 +10,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, BookOpen, Calendar, MessageSquare, Bell, Phone, Mail, FileText, UserPlus, FileQuestion } from "lucide-react"
+import { Users, BookOpen, Calendar, MessageSquare, Bell, Phone, Mail, FileText, UserPlus, FileQuestion, AlertCircle, CheckCircle } from "lucide-react"
 import Link from "next/link"
-import { format } from "date-fns"
+import { format, isValid } from "date-fns"
 import { vi } from "date-fns/locale"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function OfficeDashboard() {
   const dispatch = useAppDispatch()
   const { tutors, students, parents, teachers, isLoading: usersLoading } = useAppSelector((state) => state.users)
-  const { classRequests, isLoading: classesLoading } = useAppSelector((state) => state.classes)
+  const { classRequests, sessions, isLoading: classesLoading } = useAppSelector((state) => state.classes)
   const { officeStats, isLoading: statsLoading } = useAppSelector((state) => state.stats)
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchClassesRequest())
@@ -33,8 +35,11 @@ export default function OfficeDashboard() {
     ...teachers.map(u => ({ ...u, type: 'teacher' as const })),
     ...students.map(u => ({ ...u, type: 'student' as const })),
     ...parents.map(u => ({ ...u, type: 'parent' as const })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5)
+  ].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return timeB - timeA
+  }).slice(0, 5)
 
   // Derive Pending Requests (Class Requests + potentially others)
   const pendingRequests = classRequests
@@ -44,11 +49,28 @@ export default function OfficeDashboard() {
       type: "class_request",
       title: `Yêu cầu: ${c.subjectName} - Lớp ${c.grade}`,
       from: c.studentName || "Học sinh",
-      time: new Date(c.createdAt),
+      time: c.createdAt ? new Date(c.createdAt) : new Date(),
       priority: "high", // Mock priority
     }))
     .sort((a, b) => b.time.getTime() - a.time.getTime())
     .slice(0, 5)
+
+  // Derive Reported Sessions (Attendance discrepancies)
+  const reportedSessions = sessions
+    .filter(s => s.status === "reported")
+    .map(s => {
+      const cls = classRequests.find(c => c.id === s.classId);
+      return {
+        id: s.id,
+        classId: s.classId,
+        className: cls ? `${cls.subjectName} - Lớp ${cls.grade}` : s.classId,
+        studentName: cls?.studentName || "Học sinh",
+        tutorName: cls?.assignedTutorName || "Gia sư",
+        time: s.scheduledAt ? new Date(s.scheduledAt) : new Date(),
+        reason: "Xung đột kết quả điểm danh",
+      }
+    })
+    .sort((a, b) => b.time.getTime() - a.time.getTime())
 
   // Mock Meetings (No API yet)
   const upcomingMeetings = [
@@ -101,9 +123,9 @@ export default function OfficeDashboard() {
         />
         <StatsCard
           title="Cảnh báo điểm danh"
-          value={officeStats?.attendanceAlerts.toString() || "0"}
+          value={reportedSessions.length.toString()}
           description="Cần xử lý ngay"
-          icon={<Bell className="h-4 w-4 text-destructive" />}
+          icon={<AlertCircle className="h-4 w-4 text-destructive" />}
         />
         <StatsCard
           title="Buổi học / tháng"
@@ -152,16 +174,16 @@ export default function OfficeDashboard() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="text-sm">{format(new Date(user.createdAt), "dd/MM/yyyy", { locale: vi })}</p>
+                        <p className="text-sm">{(user.createdAt && isValid(new Date(user.createdAt))) ? format(new Date(user.createdAt), "dd/MM/yyyy", { locale: vi }) : "Chưa cập nhật"}</p>
                         <Badge variant="outline" className={user.status === 'active' ? 'text-green-600 border-green-200' : ''}>
                           {user.status === 'active' ? 'Hoạt động' : 'Chờ duyệt'}
                         </Badge>
                       </div>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => toast({ title: "Đang gọi", description: "Đang kết nối cuộc gọi..." })}>
                           <Phone className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => toast({ title: "Đang mở chat", description: "Tính năng trò chuyện đang được mở..." })}>
                           <Mail className="h-4 w-4" />
                         </Button>
                       </div>
@@ -236,15 +258,65 @@ export default function OfficeDashboard() {
                         {getPriorityBadge(request.priority)}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {request.from} - {format(request.time, "HH:mm dd/MM/yyyy", { locale: vi })}
+                        {request.from} - {isValid(request.time) ? format(request.time, "HH:mm dd/MM/yyyy", { locale: vi }) : "Chưa cập nhật"}
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => toast({ title: "Chi tiết", description: "Mở chi tiết yêu cầu..." })}>
                       Xem chi tiết
                     </Button>
-                    <Button size="sm">Xử lý</Button>
+                    <Button size="sm" onClick={() => toast({ title: "Thông báo", description: "Yêu cầu đã được chuyển trạng thái..." })}>Xử lý</Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Cảnh báo điểm danh (Báo cáo sai lệch)
+            </CardTitle>
+            <CardDescription>Các buổi học bị học sinh/phụ huynh báo cáo sai lệch</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {reportedSessions.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Không có báo cáo sai lệch điểm danh</p>
+            ) : (
+              reportedSessions.map((session) => (
+                <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg bg-red-50/50">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-red-100">
+                      <AlertCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-red-800">{session.className}</p>
+                        <Badge variant="destructive">Khẩn cấp</Badge>
+                      </div>
+                      <p className="text-sm text-red-600/80">
+                        {session.studentName} (Học sinh) - {session.tutorName} (Gia sư)
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Buổi học: {isValid(session.time) ? format(session.time, "HH:mm dd/MM/yyyy", { locale: vi }) : "Chưa cập nhật"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => toast({ title: "Đang liên hệ", description: "Đang mở cửa sổ chat với Gia sư & Học sinh..." })}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Liên hệ
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => toast({ title: "Thông báo", description: "Đã đánh dấu đang xử lý vụ việc này." })}>
+                      Nhận xử lý
+                    </Button>
                   </div>
                 </div>
               ))
@@ -259,14 +331,12 @@ export default function OfficeDashboard() {
             <CardTitle>Hành động nhanh</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
-            <Button className="justify-start bg-transparent" variant="outline" asChild>
-              <Link href="/dashboard/office/registrations/new">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Thêm khách hàng
-              </Link>
+            <Button className="justify-start bg-transparent" variant="outline" onClick={() => toast({ title: "Thêm thành viên", description: "Bạn có thể thêm người dùng mới từ Tab Khách hàng." })}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Thêm khách hàng
             </Button>
             <Button className="justify-start bg-transparent" variant="outline" asChild>
-              <Link href="/dashboard/office/classes/new">
+              <Link href="/dashboard/office/classes">
                 <BookOpen className="h-4 w-4 mr-2" />
                 Tạo lớp mới
               </Link>

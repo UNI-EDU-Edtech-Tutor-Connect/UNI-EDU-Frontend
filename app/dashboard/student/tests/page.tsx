@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "@/store"
 import { fetchTestsRequest, fetchCompletedTestsRequest } from "@/store/slices/tests-slice"
@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, Clock, Target, Search, Play, CheckCircle } from "lucide-react"
+import { FileText, Clock, Target, Search, Play, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
+
+const ITEMS_PER_PAGE = 6
 
 export default function StudentTestsPage() {
   const dispatch = useDispatch()
@@ -20,6 +22,8 @@ export default function StudentTestsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [difficultyFilter, setDifficultyFilter] = useState("all")
+  const [availablePage, setAvailablePage] = useState(1)
+  const [completedPage, setCompletedPage] = useState(1)
 
   useEffect(() => {
     dispatch(fetchTestsRequest())
@@ -30,22 +34,45 @@ export default function StudentTestsPage() {
 
   const publishedTests = tests.filter((t) => t.status === "published")
 
-  const completedTests = (completedTestsFromStore || []).map(t => ({
-    id: t.id,
-    title: t.className || "Bài kiểm tra",
-    subject: t.subject || "unknown",
-    score: t.score,
-    total: 100, // mock total
-    date: new Date(t.completedAt).toLocaleDateString("vi-VN"),
-    duration: 0
-  }))
+  const completedTests = useMemo(() => {
+    const items = (completedTestsFromStore || []).map(t => ({
+      id: t.id,
+      title: t.className || "Bài kiểm tra",
+      subject: t.subject || "unknown",
+      score: t.score,
+      total: 100,
+      date: new Date(t.completedAt).toLocaleDateString("vi-VN"),
+      duration: 0,
+      completedAt: t.completedAt
+    }))
+    // Sort newest first
+    return items.sort((a, b) => {
+      const dateA = new Date(a.completedAt).getTime()
+      const dateB = new Date(b.completedAt).getTime()
+      if (isNaN(dateA) || isNaN(dateB)) return 0
+      return dateB - dateA
+    })
+  }, [completedTestsFromStore])
 
-  const filteredTests = publishedTests.filter((test) => {
-    const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesSubject = subjectFilter === "all" || test.subjectName === subjectFilter
-    const matchesDifficulty = difficultyFilter === "all" || (test as any).difficulty === difficultyFilter
-    return matchesSearch && matchesSubject && matchesDifficulty
-  })
+  const filteredTests = useMemo(() => {
+    return publishedTests.filter((test) => {
+      const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesSubject = subjectFilter === "all" || test.subjectName === subjectFilter
+      const matchesDifficulty = difficultyFilter === "all" || (test as any).difficulty === difficultyFilter
+      return matchesSearch && matchesSubject && matchesDifficulty
+    })
+  }, [publishedTests, searchTerm, subjectFilter, difficultyFilter])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setAvailablePage(1)
+  }, [searchTerm, subjectFilter, difficultyFilter])
+
+  const availableTotalPages = Math.ceil(filteredTests.length / ITEMS_PER_PAGE)
+  const paginatedAvailable = filteredTests.slice((availablePage - 1) * ITEMS_PER_PAGE, availablePage * ITEMS_PER_PAGE)
+
+  const completedTotalPages = Math.ceil(completedTests.length / ITEMS_PER_PAGE)
+  const paginatedCompleted = completedTests.slice((completedPage - 1) * ITEMS_PER_PAGE, completedPage * ITEMS_PER_PAGE)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -71,6 +98,66 @@ export default function StudentTestsPage() {
       default:
         return difficulty
     }
+  }
+
+  const PaginationControls = ({ currentPage, totalPages, onPageChange, totalItems, label }: {
+    currentPage: number
+    totalPages: number
+    onPageChange: (page: number) => void
+    totalItems: number
+    label: string
+  }) => {
+    if (totalPages <= 1) return null
+    return (
+      <div className="flex items-center justify-between mt-4 pt-4 border-t">
+        <p className="text-sm text-muted-foreground">
+          Trang {currentPage} / {totalPages} ({totalItems} {label})
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            let pageNum: number
+            if (totalPages <= 5) {
+              pageNum = i + 1
+            } else if (currentPage <= 3) {
+              pageNum = i + 1
+            } else if (currentPage >= totalPages - 2) {
+              pageNum = totalPages - 4 + i
+            } else {
+              pageNum = currentPage - 2 + i
+            }
+            return (
+              <Button
+                key={pageNum}
+                variant={currentPage === pageNum ? "default" : "outline"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => onPageChange(pageNum)}
+              >
+                {pageNum}
+              </Button>
+            )
+          })}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -156,7 +243,7 @@ export default function StudentTestsPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredTests.map((test) => (
+            {paginatedAvailable.map((test) => (
               <Card key={test.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -199,11 +286,19 @@ export default function StudentTestsPage() {
               <p className="text-muted-foreground">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
             </div>
           )}
+
+          <PaginationControls
+            currentPage={availablePage}
+            totalPages={availableTotalPages}
+            onPageChange={setAvailablePage}
+            totalItems={filteredTests.length}
+            label="bài"
+          />
         </TabsContent>
 
         <TabsContent value="completed" className="space-y-4">
           <div className="space-y-4">
-            {completedTests.map((test) => (
+            {paginatedCompleted.map((test) => (
               <Card key={test.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -228,7 +323,7 @@ export default function StudentTestsPage() {
                         </p>
                       </div>
                       <Button variant="outline" asChild>
-                        <Link href={`/dashboard/student/tests/${test.id}/review`}>Xem lại</Link>
+                        <Link href={`/dashboard/student/tests/${test.id}/result`}>Xem lại</Link>
                       </Button>
                     </div>
                   </div>
@@ -236,6 +331,14 @@ export default function StudentTestsPage() {
               </Card>
             ))}
           </div>
+
+          <PaginationControls
+            currentPage={completedPage}
+            totalPages={completedTotalPages}
+            onPageChange={setCompletedPage}
+            totalItems={completedTests.length}
+            label="bài"
+          />
         </TabsContent>
       </Tabs>
     </div>

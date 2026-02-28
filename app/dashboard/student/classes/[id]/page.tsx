@@ -18,13 +18,15 @@ import {
   Mail,
   FileText,
   Play,
+  AlertCircle
 } from "lucide-react"
 
 import { useDispatch, useSelector } from "react-redux"
+import { useEffect, useState } from "react"
 import type { RootState } from "@/store"
-import { fetchClassesRequest } from "@/store/slices/classes-slice"
-import { useEffect } from "react"
 import { useParams } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
+import { fetchClassesRequest } from "@/store/slices/classes-slice"
 
 const mockMaterials = [
   { id: "m1", name: "Bài giảng Đại số tuyến tính", type: "pdf", size: "2.5 MB", date: "2025-12-10" },
@@ -36,6 +38,7 @@ export default function StudentClassDetailPage() {
   const router = useRouter()
   const params = useParams()
   const dispatch = useDispatch()
+  const { toast } = useToast()
 
   const { classRequests, sessions } = useSelector((state: RootState) => state.classes)
 
@@ -43,21 +46,41 @@ export default function StudentClassDetailPage() {
     dispatch(fetchClassesRequest())
   }, [dispatch])
 
-  const classDetail = classRequests.find(c => c.id === params.id)
-  const classSessions = sessions.filter(s => s.classId === params.id)
+  const classDetail = classRequests.find((c: any) => c.id === params.id)
+  const classSessions = sessions.filter((s: any) => s.classId === params.id)
 
-  const completedSessions = classSessions.filter((s) => s.status === "completed")
-  const attendedCount = completedSessions.filter((s) => s.status === "completed").length // Simulating attended if completed for now? Wait, Session has status absent/completed?
-  // Session status: "scheduled" | "completed" | "cancelled" | "absent_student" | "absent_tutor"
-  // So attended = status === 'completed'. absent = status === 'absent_student'
+  const [localSessions, setLocalSessions] = useState<any[]>([])
 
-  const attendedSessions = classSessions.filter(s => s.status === 'completed')
+  useEffect(() => {
+    if (classSessions.length > 0 && localSessions.length === 0) {
+      setLocalSessions(classSessions)
+    }
+  }, [classSessions, localSessions.length])
+
+  const handleConfirmAttendance = (sessionId: string) => {
+    setLocalSessions(prev =>
+      prev.map(s => s.id === sessionId ? { ...s, status: "completed", attended: true } : s)
+    )
+    toast({ title: "Đã xác nhận", description: "Cảm ơn bạn đã xác nhận điểm danh." })
+  }
+
+  const handleReportDiscrepancy = (sessionId: string) => {
+    setLocalSessions(prev =>
+      prev.map(s => s.id === sessionId ? { ...s, status: "reported" } : s)
+    )
+    toast({ title: "Đã báo cáo văn phòng", description: "Văn phòng sẽ liên hệ để xác minh buổi học này.", variant: "destructive" })
+  }
+
+  const completedSessions = localSessions.filter((s: any) => s.status === "completed")
+  const attendedCount = completedSessions.filter((s: any) => s.status === "completed").length
+
+  const attendedSessions = localSessions.filter((s: any) => s.status === 'completed')
   const attendanceRate = completedSessions.length > 0
-    ? (attendedSessions.length / (classSessions.filter(s => ['completed', 'absent_student'].includes(s.status)).length)) * 100
+    ? (attendedSessions.length / (localSessions.filter((s: any) => ['completed', 'absent_student'].includes(s.status)).length)) * 100
     : 100
 
   const totalSessionsMock = 24
-  const sessionsCompletedCount = classSessions.filter(s => ['completed', 'absent_student'].includes(s.status)).length
+  const sessionsCompletedCount = localSessions.filter((s: any) => ['completed', 'absent_student'].includes(s.status)).length
 
   if (!classDetail) return <div>Đang tải...</div>
 
@@ -71,10 +94,14 @@ export default function StudentClassDetailPage() {
           <h1 className="text-2xl font-bold">{classDetail.subjectName}</h1>
           <p className="text-muted-foreground">Lớp {classDetail.grade}</p>
         </div>
-        <Button>
-          <Video className="h-4 w-4 mr-2" />
-          Vào lớp học
-        </Button>
+        {classDetail.learningFormat === "online" && (
+          <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+            <a href="https://zoom.us/test" target="_blank" rel="noopener noreferrer">
+              <Video className="h-4 w-4 mr-2" />
+              Vào lớp học (Zoom)
+            </a>
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -148,7 +175,7 @@ export default function StudentClassDetailPage() {
                   <CardTitle>Lịch sử buổi học</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {classSessions.map((session: any) => (
+                  {(localSessions.length > 0 ? localSessions : classSessions).map((session: any) => (
                     <div
                       key={session.id}
                       className={`flex items-center justify-between p-4 rounded-lg border ${session.status === "scheduled" ? "border-primary/30 bg-primary/5" : ""
@@ -157,18 +184,24 @@ export default function StudentClassDetailPage() {
                       <div className="flex items-center gap-4">
                         <div
                           className={`h-10 w-10 rounded-lg flex items-center justify-center ${session.status === "completed"
-                            ? session.attended
                               ? "bg-green-100"
-                              : "bg-red-100"
-                            : "bg-blue-100"
+                              : session.status === "absent_student"
+                                ? "bg-red-100"
+                                : session.status === "pending_confirmation"
+                                  ? "bg-amber-100"
+                                  : session.status === "reported"
+                                    ? "bg-gray-100"
+                                    : "bg-blue-100"
                             }`}
                         >
-                          {session.status === "completed" || session.status === "absent_student" ? (
-                            session.status === "completed" ? (
-                              <CheckCircle className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <XCircle className="h-5 w-5 text-red-600" />
-                            )
+                          {session.status === "completed" ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : session.status === "absent_student" ? (
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          ) : session.status === "pending_confirmation" ? (
+                            <AlertCircle className="h-5 w-5 text-amber-600" />
+                          ) : session.status === "reported" ? (
+                            <AlertCircle className="h-5 w-5 text-gray-600" />
                           ) : (
                             <Clock className="h-5 w-5 text-blue-600" />
                           )}
@@ -180,9 +213,32 @@ export default function StudentClassDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge>
-                        {session.status === "scheduled" ? "Sắp tới" : session.status === "completed" ? "Đã học" : "Vắng"}
-                      </Badge>
+
+                      <div className="flex items-center gap-2">
+                        {session.status === "pending_confirmation" ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleConfirmAttendance(session.id)}
+                            >
+                              Xác nhận học
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleReportDiscrepancy(session.id)}
+                            >
+                              Báo sai lệch
+                            </Button>
+                          </div>
+                        ) : session.status === "reported" ? (
+                          <Badge variant="secondary">Đã báo sự cố</Badge>
+                        ) : (
+                          <Badge>
+                            {session.status === "scheduled" ? "Sắp tới" : session.status === "completed" ? "Đã học" : "Vắng"}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </CardContent>
@@ -215,7 +271,7 @@ export default function StudentClassDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => toast({ title: "Đang tải xuống", description: `Đang tải xuống ${material.name}...` })}>
                         Tải xuống
                       </Button>
                     </div>
@@ -298,7 +354,7 @@ export default function StudentClassDetailPage() {
                 </div>
               </div>
 
-              <Button variant="outline" className="w-full bg-transparent">
+              <Button variant="outline" className="w-full bg-transparent" onClick={() => toast({ title: "Đang mở tin nhắn...", description: "Hệ thống đang kết nối với gia sư." })}>
                 Liên hệ gia sư
               </Button>
             </CardContent>
@@ -311,7 +367,7 @@ export default function StudentClassDetailPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="space-y-2">
-                  {classDetail.preferredSchedule.map((s, i) => (
+                  {classDetail.preferredSchedule.map((s: any, i: number) => (
                     <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <span className="font-medium">Thứ {s.dayOfWeek}</span>
                       <Badge variant="secondary">{s.startTime} - {s.endTime}</Badge>

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DataTable } from "@/components/dashboard/data-table"
 import { Search, Download, Eye, MoreHorizontal } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function TransactionsPage() {
   const dispatch = useDispatch()
@@ -19,6 +20,7 @@ export default function TransactionsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const { toast } = useToast()
 
   useEffect(() => {
     dispatch(fetchTransactionsRequest())
@@ -120,12 +122,12 @@ export default function TransactionsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast({ title: "Đang tải", description: "Đang mở bảng chi tiết giao dịch..." })}>
               <Eye className="h-4 w-4 mr-2" />
               Xem chi tiết
             </DropdownMenuItem>
-            {item.status === "pending" && <DropdownMenuItem>Xử lý</DropdownMenuItem>}
-            <DropdownMenuItem>Xuất hóa đơn</DropdownMenuItem>
+            {item.status === "pending" && <DropdownMenuItem onClick={() => toast({ title: "Thông báo", description: "Chuyển hướng đến màn hình xử lý..." })}>Xử lý</DropdownMenuItem>}
+            <DropdownMenuItem onClick={() => toast({ title: "Thông báo", description: "Hóa đơn đang được xuất..." })}>Xuất hóa đơn</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -139,7 +141,7 @@ export default function TransactionsPage() {
           <h1 className="text-3xl font-bold text-foreground">Quản lý giao dịch</h1>
           <p className="text-muted-foreground mt-1">Theo dõi và xử lý tất cả giao dịch trong hệ thống</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => toast({ title: "Thông báo", description: "Báo cáo tổng hợp đang được tạo..." })}>
           <Download className="h-4 w-4 mr-2" />
           Xuất báo cáo
         </Button>
