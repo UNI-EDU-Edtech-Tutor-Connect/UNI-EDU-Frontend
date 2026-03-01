@@ -23,7 +23,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Search, Mail, Phone, MoreHorizontal, User as UserIcon } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
+import { Search, Mail, Phone, MoreHorizontal, User as UserIcon, Loader2, CheckCircle2, XCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import type { TutorProfile, StudentProfile, ParentProfile, TeacherProfile } from "@/types"
 
@@ -34,7 +44,31 @@ export default function UsersPage() {
   const [detailModal, setDetailModal] = useState<{ open: boolean, user: TutorProfile | TeacherProfile | StudentProfile | ParentProfile | null }>({ open: false, user: null })
   const [editModal, setEditModal] = useState<{ open: boolean, user: TutorProfile | TeacherProfile | StudentProfile | ParentProfile | null }>({ open: false, user: null })
   const [deleteModal, setDeleteModal] = useState<{ open: boolean, user: TutorProfile | TeacherProfile | StudentProfile | ParentProfile | null }>({ open: false, user: null })
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [resultModal, setResultModal] = useState<{ open: boolean, success: boolean, userName: string }>({ open: false, success: false, userName: "" })
   const { toast } = useToast()
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.user) return
+    const userName = deleteModal.user.fullName
+    setIsDeleting(true)
+    try {
+      // Giả lập API call xóa người dùng (thay bằng API thật khi có backend)
+      await new Promise<void>((resolve, reject) =>
+        setTimeout(() => {
+          // Giả lập 90% thành công, 10% thất bại để test
+          Math.random() > 0.1 ? resolve() : reject(new Error("Server error"))
+        }, 1200)
+      )
+      setDeleteModal({ open: false, user: null })
+      setResultModal({ open: true, success: true, userName })
+    } catch {
+      setDeleteModal({ open: false, user: null })
+      setResultModal({ open: true, success: false, userName })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   useEffect(() => {
     dispatch(fetchUsersRequest())
@@ -545,22 +579,98 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete User Dialog */}
-      <Dialog open={deleteModal.open} onOpenChange={(open) => setDeleteModal(prev => ({ ...prev, open }))}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Xóa người dùng</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <p>Bạn có chắc chắn muốn xóa người dùng <span className="font-bold">{deleteModal.user?.fullName}</span>?</p>
-            <p className="text-sm text-destructive">Hành động này không thể hoàn tác và sẽ xóa bộ lưu trữ dữ liệu liên quan.</p>
-            <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-              <Button variant="outline" onClick={() => setDeleteModal({ open: false, user: null })}>Hủy</Button>
-              <Button variant="destructive" onClick={() => {
-                toast({ title: "Đã xóa", description: "Người dùng đã được xóa khỏi hệ thống" })
-                setDeleteModal({ open: false, user: null })
-              }}>Xác nhận xóa</Button>
+      {/* Delete User AlertDialog */}
+      <AlertDialog open={deleteModal.open} onOpenChange={(open) => !isDeleting && setDeleteModal(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <XCircle className="h-5 w-5 text-destructive" />
+              </div>
+              <AlertDialogTitle>Xóa người dùng</AlertDialogTitle>
             </div>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">Bạn có chắc chắn muốn xóa người dùng <span className="font-semibold text-foreground">{deleteModal.user?.fullName}</span>?</span>
+              <span className="block text-destructive font-medium">⚠ Hành động này không thể hoàn tác và sẽ xóa toàn bộ dữ liệu liên quan.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={isDeleting}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 min-w-[120px]"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteConfirm()
+              }}
+            >
+              {isDeleting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xóa...
+                </span>
+              ) : (
+                "Xác nhận xóa"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Result Dialog - Thành công / Thất bại */}
+      <Dialog open={resultModal.open} onOpenChange={(open) => setResultModal(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-sm text-center">
+          <div className="flex flex-col items-center gap-4 py-4">
+            {resultModal.success ? (
+              <>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                  <CheckCircle2 className="h-9 w-9 text-green-600" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-foreground">Xóa thành công!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Người dùng <span className="font-semibold text-foreground">{resultModal.userName}</span> đã được xóa khỏi hệ thống.
+                  </p>
+                </div>
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => setResultModal(prev => ({ ...prev, open: false }))}
+                >
+                  Đóng
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                  <XCircle className="h-9 w-9 text-red-600" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-foreground">Xóa thất bại!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Không thể xóa người dùng <span className="font-semibold text-foreground">{resultModal.userName}</span>. Vui lòng thử lại hoặc liên hệ quản trị viên.
+                  </p>
+                </div>
+                <div className="flex w-full gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setResultModal(prev => ({ ...prev, open: false }))}
+                  >
+                    Đóng
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => {
+                      setResultModal(prev => ({ ...prev, open: false }))
+                      setDeleteModal({ open: true, user: deleteModal.user })
+                    }}
+                  >
+                    Thử lại
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
