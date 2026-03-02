@@ -21,6 +21,7 @@ import {
 import { DataTable } from "@/components/dashboard/data-table"
 import { Wallet, CreditCard, Clock, CheckCircle, AlertCircle, Search, Download, Plus, ShieldCheck } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { usePayment } from "@/hooks/use-payment"
 
@@ -36,7 +37,26 @@ export default function ParentPaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
   const [paymentMethod, setPaymentMethod] = useState("vnpay")
 
+  // Mock states to simulate local changes
+  const [walletBalance, setWalletBalance] = useState(5000000)
+  const [localPaidIds, setLocalPaidIds] = useState<Set<string>>(new Set())
+  const [localNewTransactions, setLocalNewTransactions] = useState<any[]>([])
+
   const { isLoading: isPaymentLoading, payWithVNPay, payWithMoMo } = usePayment()
+
+  const searchParams = useSearchParams()
+
+  // Check for payment callback params
+  useEffect(() => {
+    const vnp_ResponseCode = searchParams.get('vnp_ResponseCode')
+    if (vnp_ResponseCode) {
+      if (vnp_ResponseCode === '00') {
+        toast({ title: "Thanh toán thành công", description: "Cổng thanh toán đã xác nhận giao dịch của bạn." })
+      } else {
+        toast({ title: "Thanh toán thất bại", description: "Có lỗi xảy ra hoặc bạn đã hủy giao dịch trên cổng thanh toán.", variant: "destructive" })
+      }
+    }
+  }, [searchParams, toast])
 
   useEffect(() => {
     if (user?.id) {
@@ -45,7 +65,7 @@ export default function ParentPaymentsPage() {
   }, [dispatch, user?.id])
 
   const pendingPayments = transactions
-    .filter(t => t.status === 'pending')
+    .filter(t => t.status === 'pending' && !localPaidIds.has(t.id))
     .map(t => ({
       id: t.id,
       child: t.userName || "Con em", // Placeholder if not available
@@ -56,19 +76,22 @@ export default function ParentPaymentsPage() {
       sessions: 0 // Not in transaction
     }))
 
-  const paymentHistory = transactions
-    .filter(t => t.status !== 'pending')
-    .map(t => ({
-      id: t.id,
-      child: t.userName || "Con em",
-      class: t.description || "Lớp học",
-      amount: t.amount,
-      date: new Date(t.createdAt).toLocaleDateString("vi-VN"),
-      status: t.status,
-      method: t.paymentMethod || "Chuyển khoản"
-    }))
+  const paymentHistory = [
+    ...localNewTransactions,
+    ...transactions
+      .filter(t => t.status !== 'pending' || localPaidIds.has(t.id))
+      .map(t => ({
+        id: t.id,
+        child: t.userName || "Con em",
+        class: t.description || "Lớp học",
+        amount: t.amount,
+        date: new Date(t.createdAt).toLocaleDateString("vi-VN"),
+        status: localPaidIds.has(t.id) ? "completed" : t.status,
+        method: localPaidIds.has(t.id) ? "Ví EduConnect" : (t.paymentMethod || "Chuyển khoản")
+      }))
+  ]
 
-  const activePendingPayments = pendingPayments.length > 0 ? pendingPayments : [
+  let activePendingPayments = pendingPayments.length > 0 ? pendingPayments : [
     {
       id: "mock-pending-1",
       child: "Nguyễn Thị Lan",
@@ -88,6 +111,8 @@ export default function ParentPaymentsPage() {
       sessions: 6
     }
   ]
+  // Filter out mock as well if paid
+  activePendingPayments = activePendingPayments.filter(p => !localPaidIds.has(p.id))
 
   const totalPending = activePendingPayments.reduce((sum, p) => sum + p.amount, 0)
   const totalPaid = paymentHistory.filter((p) => p.status === "completed").reduce((sum, p) => sum + p.amount, 0)
@@ -129,11 +154,31 @@ export default function ParentPaymentsPage() {
       await payWithMoMo({ amount: selectedPayment.amount, orderInfo, orderId })
     } else {
       // Wallet or bank — use internal mock for now
-      toast({ title: "Đang xữ lý", description: "Giao dịch đang được xử lý..." })
+      if (paymentMethod === "wallet" && walletBalance < selectedPayment.amount) {
+        toast({ title: "Lỗi", description: "Số dư Ví không đủ!", variant: "destructive" })
+        return
+      }
+
+      toast({ title: "Đang xử lý", description: "Giao dịch đang được xử lý..." })
       setTimeout(() => {
+        if (paymentMethod === "wallet") {
+          setWalletBalance(prev => prev - selectedPayment.amount)
+        }
+
+        setLocalPaidIds(prev => new Set(prev).add(selectedPayment.id))
+        setLocalNewTransactions(prev => [{
+          id: `TX${Math.floor(Math.random() * 10000)}`,
+          child: selectedPayment.child,
+          class: selectedPayment.class,
+          amount: selectedPayment.amount,
+          date: new Date().toLocaleDateString("vi-VN"),
+          status: "completed",
+          method: paymentMethod === "wallet" ? "Ví EduConnect" : "Chuyển khoản"
+        }, ...prev])
+
         setShowPaymentDialog(false)
         setSelectedPayment(null)
-        toast({ title: "Thanh toán thành công", description: `Đã thanh toán ${new Intl.NumberFormat("vi-VN").format(selectedPayment.amount)}đ qua Ví EduConnect.` })
+        toast({ title: "Thanh toán thành công", description: `Đã thanh toán ${new Intl.NumberFormat("vi-VN").format(selectedPayment.amount)}đ qua ${paymentMethod === "wallet" ? "Ví EduConnect" : "Chuyển khoản"}.` })
       }, 1500)
     }
   }
@@ -182,7 +227,7 @@ export default function ParentPaymentsPage() {
             <Wallet className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5,000,000đ</div>
+            <div className="text-2xl font-bold">{new Intl.NumberFormat("vi-VN").format(walletBalance)}đ</div>
             <Button size="sm" variant="link" className="p-0 h-auto text-xs">
               Nạp thêm
             </Button>
@@ -341,7 +386,7 @@ export default function ParentPaymentsPage() {
                     <SelectItem value="wallet">
                       <div className="flex items-center gap-2">
                         <Wallet className="h-5 w-5 text-primary" />
-                        <span className="font-medium">Ví EduConnect (5,000,000đ)</span>
+                        <span className="font-medium">Ví EduConnect ({new Intl.NumberFormat("vi-VN").format(walletBalance)}đ)</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="bank">
